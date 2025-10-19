@@ -1,38 +1,93 @@
-import streamlit as st
 import requests
 import pandas as pd
 
-@st.cache_data
-def get_communes_du_departement(code_departement):
-    url = f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code"
-    return requests.get(url).json()
+BASE_DVF = "https://app.dvf.etalab.gouv.fr"
+BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
 
-@st.cache_data
+def get_communes_du_departement(code_departement="69"):
+    try:
+        r1 = requests.get(f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code")
+        communes = r1.json() if r1.status_code == 200 else []
+
+        r2 = requests.get(f"{BASE_DVF}/donneesgeo/arrondissements_municipaux-20180711.json")
+        arrondissements = r2.json()["features"] if r2.status_code == 200 else []
+
+        for a in arrondissements:
+            props = a["properties"]
+            if props["code"].startswith(code_departement):
+                communes.append({
+                    "nom": props["nom"],
+                    "code": props["code"]
+                })
+
+        return sorted(communes, key=lambda c: c["nom"])
+    except Exception:
+        return []
+
 def get_sections(code_commune):
-    url = f"https://cadastre.data.gouv.fr/api/communes/{code_commune}/sections"
-    return requests.get(url).json()["features"]
+    url = f"{BASE_CADASTRE}/{code_commune}/geojson/sections"
+    try:
+        r = requests.get(url)
+        if r.status_code == 200 and "features" in r.json():
+            return r.json()["features"]
+        else:
+            return []
+    except Exception:
+        return []
 
-@st.cache_data
 def get_parcelles_geojson(code_commune):
-    url = f"https://cadastre.data.gouv.fr/api/communes/{code_commune}/parcelles"
-    return requests.get(url).json()["features"]
+    url = f"{BASE_CADASTRE}/{code_commune}/geojson/parcelles"
+    try:
+        r = requests.get(url)
+        if r.status_code == 200 and "features" in r.json():
+            return r.json()["features"]
+        else:
+            return []
+    except Exception:
+        return []
 
 def get_mutations_by_id_parcelle(id_parcelle):
-    url = f"https://app.dvf.etalab.gouv.fr/api/mutations/{id_parcelle}"
-    return requests.get(url).json()
+    url = f"{BASE_DVF}/api/parcelles2/{id_parcelle}/from=2020-01-01&to=2025-12-31"
+    try:
+        r = requests.get(url)
+        if r.status_code == 200:
+            return r.json().get("mutations", [])
+        else:
+            return []
+    except Exception:
+        return []
 
 def normaliser_mutations(mutations):
     lignes = []
     for mutation in mutations:
-        for info in mutation.get("infos", []):
+        infos = mutation.get("infos", [])
+        for info in infos:
             valeur = float(info.get("valeur_fonciere", 0))
-            valeur_formatée = f"{valeur:,.2f}".replace(",", " ").replace(".", ",") + " €"
+            surface = float(info.get("surface_reelle_bati") or 0)
+            carrez = float(info.get("lot1_surface_carrez") or 0)
+
             lignes.append({
-                "Date mutation": pd.to_datetime(mutation.get("date_mutation")),
-                "Valeur foncière (€)": valeur_formatée,
-                "Type local": info.get("type_local", ""),
-                "Surface": info.get("surface_reelle_bati", ""),
-                "Adresse": info.get("adresse", ""),
-                "id_parcelle": info.get("id_parcelle", "")
+                "Date mutation": pd.to_datetime(info.get("date_mutation"), errors="coerce"),
+                "Nature mutation": info.get("nature_mutation"),
+                "Valeur foncière (€)": f"{valeur:,.0f} €",
+                "Type local": info.get("type_local"),
+                "Surface bâtie (m²)": f"{surface:.2f}",
+                "Lot Carrez (m²)": f"{carrez:.2f}",
+                "Pièces": int(info.get("nombre_pieces_principales") or 0),
+                "Nombre de lots": int(info.get("nombre_lots") or 0),
+                "Adresse": f"{info.get('adresse_numero', '')} {info.get('adresse_nom_voie', '')}".strip(),
+                "Code postal": info.get("code_postal"),
+                "Commune": info.get("nom_commune"),
+                "Section": info.get("section_prefixe"),
+                "Parcelle": info.get("id_parcelle")
             })
-    return pd.DataFrame(lignes)
+    df = pd.DataFrame(lignes)
+    colonnes = [
+        "Date mutation", "Nature mutation", "Valeur foncière (€)",
+        "Type local", "Surface bâtie (m²)", "Lot Carrez (m²)", "Pièces",
+        "Nombre de lots", "Adresse", "Code postal", "Commune",
+        "Section", "Parcelle"
+    ]
+    df = df[colonnes]
+    df = df.sort_values("Date mutation", ascending=False)
+    return df
