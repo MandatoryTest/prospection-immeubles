@@ -1,6 +1,7 @@
 import requests
 
 BASE_DVF = "https://app.dvf.etalab.gouv.fr"
+BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
 
 def get_communes_du_departement(code_departement="69"):
     try:
@@ -25,10 +26,14 @@ def get_communes_du_departement(code_departement="69"):
         return []
 
 def get_sections(code_commune):
-    url = f"{BASE_DVF}/api/sections/{code_commune}"
+    url = f"{BASE_CADASTRE}/{code_commune}/geojson/sections"
     try:
         r = requests.get(url)
-        return r.json().get("sections", []) if r.status_code == 200 else []
+        if r.status_code == 200 and "features" in r.json():
+            features = r.json()["features"]
+            return sorted({f["properties"]["code"] for f in features})
+        else:
+            return []
     except Exception:
         return []
 
