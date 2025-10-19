@@ -14,7 +14,7 @@ from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
 
-# Initialisation de l'état
+# Initialisation
 if "afficher_mutations" not in st.session_state:
     st.session_state.afficher_mutations = False
 
@@ -84,20 +84,31 @@ st.subheader("Exploration DVF par commune, section et parcelle")
 
 communes = get_communes_du_departement("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
-commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()))
+commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
+commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
+# 🟦 Sections
 section_features = get_sections(code_commune)
 section_codes = [s["properties"]["code"] for s in section_features]
 section_choisie = st.selectbox("Section cadastrale", section_codes)
 code_section = section_choisie.zfill(5)
+section_geo = [s for s in section_features if s["properties"]["code"] == section_choisie]
 
+# 🟩 Parcelles
 parcelles = get_parcelles_geojson(code_commune)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
 
-if st.button("Afficher mutations et carte"):
+# 📍 Carte affichée dès le départ
+parcelle_geo = next((p for p in parcelles_section if p["id"] == parcelle_choisie), None)
+m = generer_carte_complete(section_features, parcelles_section, [])
+st.subheader("🗺️ Carte cadastrale")
+st_folium(m, width=700, height=500)
+
+# 📑 Mutations
+if st.button("Afficher mutations"):
     st.session_state.afficher_mutations = True
     st.session_state.parcelle_choisie = parcelle_choisie
 
@@ -106,7 +117,6 @@ if st.session_state.afficher_mutations:
     if mutations:
         df_mutations = normaliser_mutations(mutations)
 
-        # 🧮 Filtres DVF
         st.subheader("Filtres DVF")
         types = sorted(df_mutations["Type local"].dropna().unique())
         type_filtre = st.multiselect("Type de bien", types, default=types)
@@ -120,15 +130,11 @@ if st.session_state.afficher_mutations:
             (df_mutations["Date mutation"] >= date_min) &
             (df_mutations["Date mutation"] <= date_max)
         ].copy()
-
-        # 📅 Format JJ/MM/AAAA
         df_filtré["Date mutation"] = df_filtré["Date mutation"].dt.strftime("%d/%m/%Y")
 
         st.success(f"{len(df_filtré)} mutations filtrées")
         st.dataframe(df_filtré)
 
-        # 🗺️ Carte complète
-        parcelle_geo = next((p for p in parcelles_section if p["id"] == st.session_state.parcelle_choisie), None)
         mutation_points = []
         for m in mutations:
             for i in m.get("infos", []):
@@ -139,8 +145,8 @@ if st.session_state.afficher_mutations:
                     "type_local": i.get("type_local")
                 })
 
-        section_geo = [s for s in section_features if s["properties"]["code"] == section_choisie]
-        m = generer_carte_complete(section_geo, [parcelle_geo], mutation_points)
+        m = generer_carte_complete(section_features, parcelles_section, mutation_points)
+        st.subheader("🗺️ Carte avec mutations")
         st_folium(m, width=700, height=500)
     else:
         st.warning("Aucune mutation trouvée pour cette parcelle.")
