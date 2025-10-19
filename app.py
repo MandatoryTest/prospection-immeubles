@@ -94,10 +94,14 @@ parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
 # 🖱️ Sélection dynamique via clic sur carte
+if "parcelle_selection" not in st.session_state:
+    st.session_state["parcelle_selection"] = parcelle_ids[0]
+
 parcelle_choisie = st.selectbox(
     "Parcelle",
     parcelle_ids,
-    index=parcelle_ids.index(st.session_state.get("parcelle_choisie", parcelle_ids[0]))
+    index=parcelle_ids.index(st.session_state["parcelle_selection"]),
+    key="parcelle_selection"
 )
 
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
@@ -124,8 +128,7 @@ carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_activ
 if carte_retour and "last_active_drawing" in carte_retour:
     clicked = carte_retour["last_active_drawing"]
     if clicked and "id" in clicked:
-        st.session_state["parcelle_choisie"] = clicked["id"]
-        st.experimental_rerun()
+        st.session_state["parcelle_selection"] = clicked["id"]
 
 # 📑 Mutations filtrées
 if df_mutations.empty:
