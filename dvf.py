@@ -57,14 +57,29 @@ def get_mutations_by_id_parcelle(id_parcelle):
     except Exception:
         return []
 
+# 🔧 Conversions sécurisées
+def safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+def safe_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
 def normaliser_mutations(mutations):
     lignes = []
     for mutation in mutations:
         infos = mutation.get("infos", [])
         for info in infos:
-            valeur = float(info.get("valeur_fonciere", 0))
-            surface = float(info.get("surface_reelle_bati") or 0)
-            carrez = float(info.get("lot1_surface_carrez") or 0)
+            valeur = safe_float(info.get("valeur_fonciere"))
+            surface = safe_float(info.get("surface_reelle_bati"))
+            carrez = safe_float(info.get("lot1_surface_carrez"))
+            pieces = safe_int(info.get("nombre_pieces_principales"))
+            lots = safe_int(info.get("nombre_lots"))
 
             lignes.append({
                 "Date mutation": pd.to_datetime(info.get("date_mutation"), errors="coerce"),
@@ -73,8 +88,8 @@ def normaliser_mutations(mutations):
                 "Type local": info.get("type_local"),
                 "Surface bâtie (m²)": f"{surface:.2f}",
                 "Lot Carrez (m²)": f"{carrez:.2f}",
-                "Pièces": int(info.get("nombre_pieces_principales") or 0),
-                "Nombre de lots": int(info.get("nombre_lots") or 0),
+                "Pièces": pieces,
+                "Nombre de lots": lots,
                 "Adresse": f"{info.get('adresse_numero', '')} {info.get('adresse_nom_voie', '')}".strip(),
                 "Code postal": info.get("code_postal"),
                 "Commune": info.get("nom_commune"),

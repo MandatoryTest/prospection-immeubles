@@ -151,7 +151,6 @@ else:
         (df_mutations["Date mutation"] >= date_min) &
         (df_mutations["Date mutation"] <= date_max)
     ].copy()
-    df_filtré["Date mutation"] = pd.to_datetime(df_filtré["Date mutation"], errors="coerce").dt.strftime("%d/%m/%Y")
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
