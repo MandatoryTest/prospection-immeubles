@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 streamlit
 pandas
 requests
@@ -6,12 +5,3 @@ folium
 streamlit-folium
 fpdf
 plotly
-=======
-streamlit
-pandas
-requests
-folium
-streamlit-folium
-fpdf
-plotly
->>>>>>> 36d8982681a72f0a9e769e0284b39d72e49652b3
