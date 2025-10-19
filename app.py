@@ -118,14 +118,15 @@ else:
     st.success(f"{len(df_filtré)} mutations filtrées")
 
     # 📐 Alignement personnalisé
-    styler = df_filtré.style.set_properties(**{
-        "text-align": "right"
-    }).set_table_styles([
-        {"selector": "th", "props": [("text-align", "center")]},
-        {"selector": "td.col1", "props": [("text-align", "center")]},  # Date mutation
-        {"selector": "td.col2", "props": [("text-align", "center")]},  # Nature mutation
-        {"selector": "td.col10", "props": [("text-align", "center")]}  # Code postal
-    ])
+    colonnes_droite = [
+        "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
+        "Pièces", "Nombre de lots"
+    ]
+    colonnes_centre = ["Date mutation", "Nature mutation", "Code postal"]
+
+    styler = df_filtré.style \
+        .set_properties(**{"text-align": "right"}, subset=colonnes_droite) \
+        .set_properties(**{"text-align": "center"}, subset=colonnes_centre)
 
     st.dataframe(styler)
 
