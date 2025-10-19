@@ -26,11 +26,9 @@ def get_mutations_by_parcelle(parcelle_id: str):
 
 def get_communes_du_departement(code_departement="69"):
     try:
-        # Communes classiques
         r1 = requests.get(f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code")
         communes = r1.json() if r1.status_code == 200 else []
 
-        # Arrondissements municipaux
         r2 = requests.get("https://app.dvf.etalab.gouv.fr/donneesgeo/arrondissements_municipaux-20180711.json")
         arrondissements = r2.json()["features"] if r2.status_code == 200 else []
 
@@ -46,24 +44,40 @@ def get_communes_du_departement(code_departement="69"):
     except Exception:
         return []
 
-def get_sections_geojson(code_commune):
-    url = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code_commune}/geojson/sections"
+def get_commune_cadastre_codes(code_commune):
+    url = "https://app.dvf.etalab.gouv.fr/donneesgeo/communes-mapping.json"
     try:
         r = requests.get(url)
         if r.status_code == 200:
-            return r.json()["features"]
+            mapping = r.json()
+            return mapping.get(code_commune, [code_commune])
         else:
-            return []
+            return [code_commune]
     except Exception:
-        return []
+        return [code_commune]
+
+def get_sections_geojson(code_commune):
+    codes = get_commune_cadastre_codes(code_commune)
+    features = []
+    for c in codes:
+        url = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{c}/geojson/sections"
+        try:
+            r = requests.get(url)
+            if r.status_code == 200 and "features" in r.json():
+                features += r.json()["features"]
+        except Exception:
+            continue
+    return features
 
 def get_parcelles_geojson(code_commune):
-    url = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code_commune}/geojson/parcelles"
-    try:
-        r = requests.get(url)
-        if r.status_code == 200:
-            return r.json()["features"]
-        else:
-            return []
-    except Exception:
-        return []
+    codes = get_commune_cadastre_codes(code_commune)
+    features = []
+    for c in codes:
+        url = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{c}/geojson/parcelles"
+        try:
+            r = requests.get(url)
+            if r.status_code == 200 and "features" in r.json():
+                features += r.json()["features"]
+        except Exception:
+            continue
+    return features

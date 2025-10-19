@@ -85,24 +85,31 @@ code_commune = commune_nom_to_code[commune_choisie]
 
 sections = get_sections_geojson(code_commune)
 section_ids = [s["properties"]["code"] for s in sections]
-section_choisie = st.selectbox("Section cadastrale", section_ids)
+if section_ids:
+    section_choisie = st.selectbox("Section cadastrale", section_ids)
 
-parcelles = get_parcelles_geojson(code_commune)
-parcelles_section = [p for p in parcelles if p["id"].startswith(section_choisie)]
-parcelle_ids = [p["id"] for p in parcelles_section]
-parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
+    parcelles = get_parcelles_geojson(code_commune)
+    parcelles_section = [p for p in parcelles if p["id"].startswith(section_choisie)]
+    parcelle_ids = [p["id"] for p in parcelles_section]
 
-if st.button("Afficher mutations et carte"):
-    mutations = get_mutations_by_parcelle(parcelle_choisie)
-    if isinstance(mutations, list):
-        st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
-        st.dataframe(mutations)
+    if parcelle_ids:
+        parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
+
+        if st.button("Afficher mutations et carte"):
+            mutations = get_mutations_by_parcelle(parcelle_choisie)
+            if isinstance(mutations, list):
+                st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
+                st.dataframe(mutations)
+            else:
+                st.error(mutations.get("error", "Erreur inconnue"))
+
+            geojson = {"type": "FeatureCollection", "features": parcelles_section}
+            m = generer_carte_parcelles(geojson)
+            st_folium(m, width=700, height=500)
     else:
-        st.error(mutations.get("error", "Erreur inconnue"))
-
-    geojson = {"type": "FeatureCollection", "features": parcelles_section}
-    m = generer_carte_parcelles(geojson)
-    st_folium(m, width=700, height=500)
+        st.warning("Aucune parcelle trouvée pour cette section.")
+else:
+    st.warning("Aucune section cadastrale disponible pour cette commune.")
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")
