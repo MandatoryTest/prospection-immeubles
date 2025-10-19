@@ -14,7 +14,6 @@ from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
 
-# Initialisation
 if "afficher_mutations" not in st.session_state:
     st.session_state.afficher_mutations = False
 
@@ -88,24 +87,23 @@ commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commun
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
-# 🟦 Sections
 section_features = get_sections(code_commune)
 section_codes = [s["properties"]["code"] for s in section_features]
 section_choisie = st.selectbox("Section cadastrale", section_codes)
 code_section = section_choisie.zfill(5)
 section_geo = [s for s in section_features if s["properties"]["code"] == section_choisie]
 
-# 🟩 Parcelles
 parcelles = get_parcelles_geojson(code_commune)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
-
-# 📍 Carte affichée dès le départ
 parcelle_geo = next((p for p in parcelles_section if p["id"] == parcelle_choisie), None)
-m = generer_carte_complete(section_features, parcelles_section, [])
+
+# 🗺️ Carte toujours centrée sur la section/parcelle
+mutation_points = []
+m = generer_carte_complete(section_geo, parcelles_section, mutation_points)
 st.subheader("🗺️ Carte cadastrale")
-st_folium(m, width=700, height=500)
+st_folium(m, width=700, height=500, returned_objects=[])
 
 # 📑 Mutations
 if st.button("Afficher mutations"):
@@ -145,9 +143,9 @@ if st.session_state.afficher_mutations:
                     "type_local": i.get("type_local")
                 })
 
-        m = generer_carte_complete(section_features, parcelles_section, mutation_points)
+        m = generer_carte_complete(section_geo, [parcelle_geo], mutation_points)
         st.subheader("🗺️ Carte avec mutations")
-        st_folium(m, width=700, height=500)
+        st_folium(m, width=700, height=500, returned_objects=[])
     else:
         st.warning("Aucune mutation trouvée pour cette parcelle.")
 
