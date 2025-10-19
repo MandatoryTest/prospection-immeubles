@@ -5,11 +5,9 @@ BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
 
 def get_communes_du_departement(code_departement="69"):
     try:
-        # Communes classiques
         r1 = requests.get(f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code")
         communes = r1.json() if r1.status_code == 200 else []
 
-        # Arrondissements municipaux
         r2 = requests.get(f"{BASE_DVF}/donneesgeo/arrondissements_municipaux-20180711.json")
         arrondissements = r2.json()["features"] if r2.status_code == 200 else []
 
