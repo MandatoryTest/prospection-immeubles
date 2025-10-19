@@ -74,8 +74,10 @@ st.subheader("🗺️ Carte DVF interactive")
 
 communes = get_communes_du_departement("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
+commune_names = sorted(commune_nom_to_code.keys())
 commune_default = "Lyon 3e Arrondissement"
-commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
+default_index = commune_names.index(commune_default) if commune_default in commune_names else 0
+commune_choisie = st.selectbox("Commune", commune_names, index=default_index)
 code_commune = commune_nom_to_code[commune_choisie]
 
 sections = get_sections(code_commune)
