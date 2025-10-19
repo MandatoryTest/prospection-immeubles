@@ -1,0 +1,12 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\.py]
+@="Python.File"
+"Content Type"="text/plain"
+"PerceivedType"="text"
+
+[HKEY_CLASSES_ROOT\Python.File]
+@="Fichier Python"
+
+[HKEY_CLASSES_ROOT\Python.File\ShellNew]
+"NullFile"=""
