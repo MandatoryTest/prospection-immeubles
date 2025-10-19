@@ -69,7 +69,7 @@ def normaliser_mutations(mutations):
             lignes.append({
                 "Date mutation": pd.to_datetime(info.get("date_mutation"), errors="coerce"),
                 "Nature mutation": info.get("nature_mutation"),
-                "Valeur foncière (€)": f"{valeur:,.0f} €",
+                "Valeur foncière (€)": f"{valeur:,.0f}".replace(",", " ").replace(".", ",") + " €",
                 "Type local": info.get("type_local"),
                 "Surface bâtie (m²)": f"{surface:.2f}",
                 "Lot Carrez (m²)": f"{carrez:.2f}",

@@ -116,7 +116,11 @@ else:
     df_filtré["Date mutation"] = df_filtré["Date mutation"].dt.strftime("%d/%m/%Y")
 
     st.success(f"{len(df_filtré)} mutations filtrées")
-    st.dataframe(df_filtré)
+    st.dataframe(
+        df_filtré.style.set_properties(**{"text-align": "left"}).set_table_styles([{
+            "selector": "th", "props": [("text-align", "left")]
+        }])
+    )
 
     mutation_points = []
     parcelles_mutées = set()
