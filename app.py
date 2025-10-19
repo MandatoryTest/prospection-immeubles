@@ -4,10 +4,10 @@ from prospection import ajouter_entree, charger_donnees
 from dvf import (
     get_communes_du_departement,
     get_sections,
-    get_parcelles_from_mutations,
+    get_parcelles_geojson,
     get_mutations_by_parcelle
 )
-from map import generer_carte_mutations
+from map import generer_carte_parcelles
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
@@ -85,16 +85,19 @@ sections = get_sections(code_commune)
 if sections:
     section_choisie = st.selectbox("Section cadastrale", sections)
 
-    parcelles = get_parcelles_from_mutations(code_commune, section_choisie)
-    if parcelles:
-        parcelle_choisie = st.selectbox("Parcelle", parcelles)
+    parcelles = get_parcelles_geojson(code_commune)
+    parcelles_section = [p for p in parcelles if p["id"].startswith(section_choisie)]
+    parcelle_ids = [p["id"] for p in parcelles_section]
+
+    if parcelle_ids:
+        parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
 
         if st.button("Afficher mutations et carte"):
             mutations = get_mutations_by_parcelle(code_commune, section_choisie, parcelle_choisie)
             if mutations:
                 st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
                 st.dataframe(mutations)
-                m = generer_carte_mutations(mutations)
+                m = generer_carte_parcelles(parcelles_section)
                 st_folium(m, width=700, height=500)
             else:
                 st.warning("Aucune mutation trouvée pour cette parcelle.")
