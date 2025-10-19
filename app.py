@@ -2,13 +2,12 @@ import streamlit as st
 from datetime import datetime
 from prospection import ajouter_entree, charger_donnees
 from dvf import (
-    get_mutations,
-    get_mutations_by_parcelle,
-    get_parcelles_from_mutations,
     get_communes_du_departement,
-    get_sections_geojson
+    get_sections,
+    get_parcelles_from_mutations,
+    get_mutations_by_parcelle
 )
-from map import generer_carte_parcelles
+from map import generer_carte_mutations
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
@@ -74,46 +73,26 @@ st.metric("Intéressés", interet)
 st.metric("Taux de conversion", f"{taux}%")
 st.plotly_chart(graphique_interet(df))
 
-# 🔎 Exploration DVF par section cadastrale
-st.subheader("Exploration DVF par section cadastrale")
+# 🔎 Exploration DVF ciblée
+st.subheader("Exploration DVF par commune, section et parcelle")
 
-code_commune = st.text_input("Code INSEE commune", value="69383")
-section = st.text_input("Code section cadastrale (ex: AC)", value="AC")
-section_code = section.zfill(5)
+communes = get_communes_du_departement("69")
+commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
+commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()))
+code_commune = commune_nom_to_code[commune_choisie]
 
-# 📍 Parcelles extraites depuis mutations DVF
-parcelles = get_parcelles_from_mutations(code_commune, section_code)
-if parcelles:
-    parcelle_choisie = st.selectbox("Parcelle", parcelles)
+sections = get_sections(code_commune)
+section_choisie = st.selectbox("Section cadastrale", sections)
 
-    if st.button("Afficher mutations pour cette parcelle"):
-        mutations = get_mutations(code_commune, section_code)
-        mutations_parcelle = [
-            m for m in mutations
-            if parcelle_choisie in [p["id_parcelle"] for p in m.get("parcelles", [])]
-        ]
-        st.success(f"{len(mutations_parcelle)} mutations trouvées pour {parcelle_choisie}")
-        st.dataframe(mutations_parcelle)
+parcelles = get_parcelles_from_mutations(code_commune, section_choisie)
+parcelle_choisie = st.selectbox("Parcelle", parcelles)
 
-        # Carte centrée sur la parcelle
-        geojson = {
-            "type": "FeatureCollection",
-            "features": [{
-                "type": "Feature",
-                "properties": {"id": parcelle_choisie},
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [m["longitude"], m["latitude"]]
-                }
-            } for m in mutations_parcelle if "longitude" in m and "latitude" in m]
-        }
-        if geojson["features"]:
-            m = generer_carte_parcelles(geojson)
-            st_folium(m, width=700, height=500)
-        else:
-            st.warning("Coordonnées géographiques non disponibles pour affichage cartographique.")
-else:
-    st.warning("Aucune parcelle trouvée pour cette section.")
+if st.button("Afficher mutations et carte"):
+    mutations = get_mutations_by_parcelle(code_commune, section_choisie, parcelle_choisie)
+    st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
+    st.dataframe(mutations)
+    m = generer_carte_mutations(mutations)
+    st_folium(m, width=700, height=500)
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")
