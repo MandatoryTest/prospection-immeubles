@@ -84,16 +84,17 @@ code_commune = commune_nom_to_code[commune_choisie]
 sections = get_sections(code_commune)
 if sections:
     section_choisie = st.selectbox("Section cadastrale", sections)
+    code_section = section_choisie.zfill(5)
 
     parcelles = get_parcelles_geojson(code_commune)
-    parcelles_section = [p for p in parcelles if p["id"].startswith(section_choisie)]
+    parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
     parcelle_ids = [p["id"] for p in parcelles_section]
 
     if parcelle_ids:
         parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
 
         if st.button("Afficher mutations et carte"):
-            mutations = get_mutations_by_parcelle(code_commune, section_choisie, parcelle_choisie)
+            mutations = get_mutations_by_parcelle(code_commune, code_section, parcelle_choisie)
             if mutations:
                 st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
                 st.dataframe(mutations)
