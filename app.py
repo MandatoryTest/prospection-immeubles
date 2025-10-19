@@ -111,7 +111,9 @@ if st.button("Afficher mutations"):
 
 if st.session_state.afficher_mutations:
     mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_choisie)
-    if mutations:
+    if not mutations:
+        st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
+    else:
         df_mutations = normaliser_mutations(mutations)
 
         st.subheader("Filtres DVF")
@@ -147,8 +149,6 @@ if st.session_state.afficher_mutations:
         m = generer_carte_complete(section_features, parcelles_section, mutation_points, parcelles_mutées)
         st.subheader("🗺️ Carte avec mutations")
         st_folium(m, width=700, height=500, returned_objects=[])
-    else:
-        st.warning("Aucune mutation trouvée pour cette parcelle.")
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")

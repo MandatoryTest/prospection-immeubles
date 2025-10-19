@@ -11,6 +11,7 @@ def get_centroid(feature):
     return lat, lon
 
 def generer_carte_complete(sections, parcelles, mutation_points, parcelles_mutées=None):
+    # Centrage sur première parcelle ou section
     if parcelles:
         lat, lon = get_centroid(parcelles[0])
     elif sections:
@@ -45,7 +46,7 @@ def generer_carte_complete(sections, parcelles, mutation_points, parcelles_muté
     for pt in mutation_points:
         lat = pt.get("latitude")
         lon = pt.get("longitude")
-        popup = f"{pt.get('valeur_fonciere', 'N/A')} € - {pt.get('type_local', '')}"
+        popup = f"{format_valeur(pt.get('valeur_fonciere'))} - {pt.get('type_local', '')}"
         if lat and lon:
             folium.CircleMarker(
                 location=[float(lat), float(lon)],
@@ -58,3 +59,10 @@ def generer_carte_complete(sections, parcelles, mutation_points, parcelles_muté
 
     folium.LayerControl().add_to(m)
     return m
+
+def format_valeur(valeur):
+    try:
+        montant = float(valeur)
+        return f"{montant:,.2f}".replace(",", " ").replace(".", ",") + " €"
+    except:
+        return "N/A"
