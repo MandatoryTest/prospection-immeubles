@@ -35,6 +35,17 @@ def get_sections(code_commune):
     except Exception:
         return []
 
+def get_parcelles_geojson(code_commune):
+    url = f"{BASE_CADASTRE}/{code_commune}/geojson/parcelles"
+    try:
+        r = requests.get(url)
+        if r.status_code == 200 and "features" in r.json():
+            return r.json()["features"]
+        else:
+            return []
+    except Exception:
+        return []
+
 def get_mutations(code_commune, section):
     if not section:
         return {"error": "Section cadastrale manquante"}
@@ -44,17 +55,6 @@ def get_mutations(code_commune, section):
         r = requests.get(url)
         return r.json().get("mutations", []) if r.status_code == 200 else []
     except Exception:
-        return []
-
-def get_parcelles_from_mutations(code_commune, section):
-    mutations = get_mutations(code_commune, section)
-    if isinstance(mutations, list):
-        parcelles = set()
-        for m in mutations:
-            for p in m.get("parcelles", []):
-                parcelles.add(p.get("id_parcelle"))
-        return sorted(parcelles)
-    else:
         return []
 
 def get_mutations_by_parcelle(code_commune, section, parcelle_id):
