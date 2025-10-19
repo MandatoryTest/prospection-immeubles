@@ -96,22 +96,31 @@ parcelle_ids = [p["id"] for p in parcelles_section]
 # 🖱️ Parcelle sélectionnée par défaut
 parcelle_selectionnée = parcelle_ids[0]
 
-# 🗺️ Carte interactive
+# 📦 Sélecteur de parcelle
+parcelle_choisie = st.selectbox(
+    "Parcelle",
+    parcelle_ids,
+    index=parcelle_ids.index(parcelle_selectionnée)
+)
+
+# 📑 Mutations DVF pour la parcelle sélectionnée
+mutations = get_mutations_by_id_parcelle(parcelle_choisie)
+df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
+
+# 📍 Points pour la carte
 mutation_points = []
 parcelles_mutées = set()
-for p in parcelles_section:
-    pid = p["id"]
-    mutations = get_mutations_by_id_parcelle(pid)
-    for m in mutations:
-        for i in m.get("infos", []):
-            mutation_points.append({
-                "latitude": i.get("latitude"),
-                "longitude": i.get("longitude"),
-                "valeur_fonciere": i.get("valeur_fonciere"),
-                "type_local": i.get("type_local")
-            })
-            parcelles_mutées.add(pid)
+for m in mutations:
+    for i in m.get("infos", []):
+        mutation_points.append({
+            "latitude": i.get("latitude"),
+            "longitude": i.get("longitude"),
+            "valeur_fonciere": i.get("valeur_fonciere"),
+            "type_local": i.get("type_local")
+        })
+        parcelles_mutées.add(parcelle_choisie)
 
+# 🗺️ Carte avec une seule parcelle en surbrillance
 m = generer_carte_complete(sections, parcelles_section, mutation_points, parcelles_mutées)
 st.subheader("🗺️ Carte des mutations DVF")
 carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
@@ -120,20 +129,12 @@ carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_activ
 if carte_retour and "last_active_drawing" in carte_retour:
     clicked = carte_retour["last_active_drawing"]
     if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
-        parcelle_selectionnée = clicked["id"]
-        st.info(f"📍 Parcelle sélectionnée : {parcelle_selectionnée}")
+        parcelle_choisie = clicked["id"]
+        st.info(f"📍 Parcelle sélectionnée : {parcelle_choisie}")
+        mutations = get_mutations_by_id_parcelle(parcelle_choisie)
+        df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
-# 📦 Sélecteur de parcelle (synchronisé)
-parcelle_choisie = st.selectbox(
-    "Parcelle",
-    parcelle_ids,
-    index=parcelle_ids.index(parcelle_selectionnée)
-)
-
-# 📑 Mutations DVF
-mutations = get_mutations_by_id_parcelle(parcelle_choisie)
-df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
-
+# 📑 Affichage des mutations
 if df_mutations.empty:
     st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
 else:
