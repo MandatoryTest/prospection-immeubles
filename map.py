@@ -7,7 +7,7 @@ def get_centroid(feature):
     elif feature["geometry"]["type"] == "MultiPolygon":
         lon, lat = coords[0][0][0]
     else:
-        lon, lat = 4.85, 45.76
+        lon, lat = 4.85, 45.76  # fallback sur Villeurbanne
     return lat, lon
 
 def format_valeur(valeur):
@@ -17,7 +17,8 @@ def format_valeur(valeur):
     except:
         return "N/A"
 
-def generer_carte_unique(sections, parcelles, mutation_points, parcelles_mutées=None):
+def generer_carte_complete(sections, parcelles, mutation_points, parcelles_mutées=None):
+    # Centrage sur la première parcelle ou section
     if parcelles:
         lat, lon = get_centroid(parcelles[0])
     elif sections:
@@ -29,32 +30,34 @@ def generer_carte_unique(sections, parcelles, mutation_points, parcelles_mutées
 
     # 🟦 Sections
     for s in sections:
-        s["properties"]["id"] = s["properties"]["code"]
-        s["properties"]["type"] = "section"
         folium.GeoJson(
             s,
             name="Sections",
-            style_function=lambda x: {"color": "blue", "weight": 1, "fillOpacity": 0.1},
-            highlight_function=lambda x: {"weight": 3, "color": "orange"},
-            tooltip=s["properties"]["code"]
+            style_function=lambda x: {
+                "color": "blue",
+                "weight": 1,
+                "fillOpacity": 0.1
+            },
+            tooltip=s["properties"].get("code", "")
         ).add_to(m)
 
     # 🟩 / 🟥 Parcelles
     parcelles_mutées = parcelles_mutées or set()
     for p in parcelles:
         pid = p["id"]
-        p["properties"]["id"] = pid
-        p["properties"]["type"] = "parcelle"
         color = "red" if pid in parcelles_mutées else "green"
         folium.GeoJson(
             p,
             name="Parcelles",
-            style_function=lambda x, c=color: {"color": c, "weight": 1, "fillOpacity": 0.2},
-            highlight_function=lambda x: {"weight": 3, "color": "orange"},
+            style_function=lambda x, c=color: {
+                "color": c,
+                "weight": 1,
+                "fillOpacity": 0.2
+            },
             tooltip=pid
         ).add_to(m)
 
-    # 🔴 Mutations
+    # 🔴 Points de mutation
     for pt in mutation_points:
         lat = pt.get("latitude")
         lon = pt.get("longitude")
