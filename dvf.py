@@ -60,15 +60,20 @@ def get_mutations_by_id_parcelle(id_parcelle):
 
 def normaliser_mutations(mutations):
     lignes = []
-    for m in mutations:
-        lignes.append({
-            "Date": m.get("date_mutation"),
-            "Valeur foncière (€)": m.get("valeur_fonciere"),
-            "Type local": m.get("type_local"),
-            "Surface (m²)": m.get("surface_reelle_bati"),
-            "Adresse": m.get("adresse"),
-            "Code commune": m.get("code_commune"),
-            "Section": m.get("parcelles", [{}])[0].get("section"),
-            "Parcelle": m.get("parcelles", [{}])[0].get("id_parcelle")
-        })
+    for mutation in mutations:
+        infos = mutation.get("infos", [])
+        for info in infos:
+            lignes.append({
+                "Date": info.get("date_mutation"),
+                "Valeur foncière (€)": info.get("valeur_fonciere"),
+                "Type local": info.get("type_local"),
+                "Surface (m²)": info.get("surface_reelle_bati"),
+                "Pièces": info.get("nombre_pieces_principales"),
+                "Adresse": f"{info.get('adresse_numero', '')} {info.get('adresse_nom_voie', '')}",
+                "Commune": info.get("nom_commune"),
+                "Parcelle": info.get("id_parcelle"),
+                "Lots": info.get("nombre_lots"),
+                "Carrez lot 1": info.get("lot1_surface_carrez"),
+                "Nature mutation": info.get("nature_mutation")
+            })
     return pd.DataFrame(lignes)
