@@ -9,7 +9,7 @@ from dvf import (
     get_mutations_by_id_parcelle,
     normaliser_mutations
 )
-from map import generer_carte_interactive
+from map import generer_carte_unique
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
@@ -60,19 +60,36 @@ if filtre != "Tous":
     df = df[df["Immeuble"] == filtre]
 st.dataframe(df)
 
-# 🔎 Carte interactive DVF
-st.subheader("🗺️ Carte interactive DVF")
+# 📊 Statistiques
+st.subheader("Statistiques de prospection")
+total, contactes, interet, taux = stats_prospection(df)
+st.metric("Total entrées", total)
+st.metric("Contactés", contactes)
+st.metric("Intéressés", interet)
+st.metric("Taux de conversion", f"{taux}%")
+st.plotly_chart(graphique_interet(df))
+
+# 🗺️ Carte DVF interactive
+st.subheader("🗺️ Carte DVF interactive")
 
 communes = get_communes_du_departement("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
-commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
+commune_default = "Lyon 3e Arrondissement"
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
 sections = get_sections(code_commune)
 parcelles = get_parcelles_geojson(code_commune)
 
-m = generer_carte_interactive(sections, parcelles)
+# Initialisation
+section_code = None
+parcelles_section = []
+mutations = []
+mutation_points = []
+parcelles_mutées = set()
+
+# Carte initiale
+m = generer_carte_unique(sections, [], [], set())
 result = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
 
 clicked = result.get("last_active_drawing", {}).get("properties", {})
@@ -80,18 +97,35 @@ clicked_id = clicked.get("id", "")
 clicked_type = clicked.get("type", "")
 
 if clicked_type == "section":
-    st.subheader(f"📍 Parcelles de la section {clicked_id}")
-    parcelles_section = [p for p in parcelles if p["id"][5:10] == clicked_id]
-    st.write(f"{len(parcelles_section)} parcelles trouvées.")
+    section_code = clicked_id
+    parcelles_section = [p for p in parcelles if p["id"][5:10] == section_code]
+    m = generer_carte_unique(sections, parcelles_section, [], set())
+    st.subheader(f"📍 Parcelles de la section {section_code}")
+    st_folium(m, width=700, height=500, returned_objects=[])
+
 elif clicked_type == "parcelle":
-    st.subheader(f"📑 Mutations de la parcelle {clicked_id}")
     mutations = get_mutations_by_id_parcelle(clicked_id)
-    if not mutations:
-        st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
-    else:
+    if mutations:
         df_mutations = normaliser_mutations(mutations)
         df_mutations["Date mutation"] = df_mutations["Date mutation"].dt.strftime("%d/%m/%Y")
+        st.subheader(f"📑 Mutations de la parcelle {clicked_id}")
         st.dataframe(df_mutations)
+
+        for m in mutations:
+            for i in m.get("infos", []):
+                mutation_points.append({
+                    "latitude": i.get("latitude"),
+                    "longitude": i.get("longitude"),
+                    "valeur_fonciere": i.get("valeur_fonciere"),
+                    "type_local": i.get("type_local")
+                })
+                parcelles_mutées.add(i.get("id_parcelle"))
+
+        section_code = clicked_id[5:10]
+        parcelles_section = [p for p in parcelles if p["id"][5:10] == section_code]
+        m = generer_carte_unique(sections, parcelles_section, mutation_points, parcelles_mutées)
+        st.subheader("🗺️ Carte avec mutations")
+        st_folium(m, width=700, height=500, returned_objects=[])
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")
