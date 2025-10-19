@@ -6,6 +6,9 @@ def generer_carte_mutations(mutations):
         lat = mtn.get("latitude")
         lon = mtn.get("longitude")
         if lat and lon:
-            popup = folium.Popup(f"{mtn.get('date_mutation')} – {mtn.get('valeur_fonciere')} €", max_width=250)
+            popup = folium.Popup(
+                f"{mtn.get('date_mutation')} – {mtn.get('valeur_fonciere')} €",
+                max_width=250
+            )
             folium.Marker([lat, lon], popup=popup).add_to(m)
     return m

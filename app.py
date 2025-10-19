@@ -82,17 +82,26 @@ commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()))
 code_commune = commune_nom_to_code[commune_choisie]
 
 sections = get_sections(code_commune)
-section_choisie = st.selectbox("Section cadastrale", sections)
+if sections:
+    section_choisie = st.selectbox("Section cadastrale", sections)
 
-parcelles = get_parcelles_from_mutations(code_commune, section_choisie)
-parcelle_choisie = st.selectbox("Parcelle", parcelles)
+    parcelles = get_parcelles_from_mutations(code_commune, section_choisie)
+    if parcelles:
+        parcelle_choisie = st.selectbox("Parcelle", parcelles)
 
-if st.button("Afficher mutations et carte"):
-    mutations = get_mutations_by_parcelle(code_commune, section_choisie, parcelle_choisie)
-    st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
-    st.dataframe(mutations)
-    m = generer_carte_mutations(mutations)
-    st_folium(m, width=700, height=500)
+        if st.button("Afficher mutations et carte"):
+            mutations = get_mutations_by_parcelle(code_commune, section_choisie, parcelle_choisie)
+            if mutations:
+                st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
+                st.dataframe(mutations)
+                m = generer_carte_mutations(mutations)
+                st_folium(m, width=700, height=500)
+            else:
+                st.warning("Aucune mutation trouvée pour cette parcelle.")
+    else:
+        st.warning("Aucune parcelle trouvée pour cette section.")
+else:
+    st.warning("Aucune section cadastrale disponible pour cette commune.")
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")

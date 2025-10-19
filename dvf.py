@@ -33,7 +33,9 @@ def get_sections(code_commune):
         return []
 
 def get_mutations(code_commune, section):
-    section = section.zfill(5)
+    if not section:
+        return {"error": "Section cadastrale manquante"}
+    section = str(section).zfill(5)
     url = f"{BASE_DVF}/api/mutations3/{code_commune}/{section}"
     try:
         r = requests.get(url)
@@ -43,15 +45,21 @@ def get_mutations(code_commune, section):
 
 def get_parcelles_from_mutations(code_commune, section):
     mutations = get_mutations(code_commune, section)
-    parcelles = set()
-    for m in mutations:
-        for p in m.get("parcelles", []):
-            parcelles.add(p.get("id_parcelle"))
-    return sorted(parcelles)
+    if isinstance(mutations, list):
+        parcelles = set()
+        for m in mutations:
+            for p in m.get("parcelles", []):
+                parcelles.add(p.get("id_parcelle"))
+        return sorted(parcelles)
+    else:
+        return []
 
 def get_mutations_by_parcelle(code_commune, section, parcelle_id):
     mutations = get_mutations(code_commune, section)
-    return [
-        m for m in mutations
-        if parcelle_id in [p["id_parcelle"] for p in m.get("parcelles", [])]
-    ]
+    if isinstance(mutations, list):
+        return [
+            m for m in mutations
+            if parcelle_id in [p["id_parcelle"] for p in m.get("parcelles", [])]
+        ]
+    else:
+        return []
