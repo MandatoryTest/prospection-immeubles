@@ -1,5 +1,6 @@
 import streamlit as st
 from datetime import datetime
+import pandas as pd
 from prospection import ajouter_entree, charger_donnees
 from dvf import (
     get_communes_du_departement,
@@ -13,6 +14,7 @@ from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
 
+# Initialisation de l'état
 if "afficher_mutations" not in st.session_state:
     st.session_state.afficher_mutations = False
 
@@ -104,18 +106,20 @@ if st.session_state.afficher_mutations:
     if mutations:
         df_mutations = normaliser_mutations(mutations)
 
-        # 🧮 Filtres
+        # 🧮 Filtres DVF
         st.subheader("Filtres DVF")
         types = sorted(df_mutations["Type local"].dropna().unique())
         type_filtre = st.multiselect("Type de bien", types, default=types)
-        date_min = st.date_input("Date min", value=df_mutations["Date mutation"].min())
-        date_max = st.date_input("Date max", value=df_mutations["Date mutation"].max())
+        date_min_raw = st.date_input("Date min", value=df_mutations["Date mutation"].min().date())
+        date_max_raw = st.date_input("Date max", value=df_mutations["Date mutation"].max().date())
+        date_min = pd.Timestamp(date_min_raw)
+        date_max = pd.Timestamp(date_max_raw)
 
         df_filtré = df_mutations[
             (df_mutations["Type local"].isin(type_filtre)) &
-            (df_mutations["Date mutation"] >= pd.to_datetime(date_min)) &
-            (df_mutations["Date mutation"] <= pd.to_datetime(date_max))
-        ]
+            (df_mutations["Date mutation"] >= date_min) &
+            (df_mutations["Date mutation"] <= date_max)
+        ].copy()
 
         # 📅 Format JJ/MM/AAAA
         df_filtré["Date mutation"] = df_filtré["Date mutation"].dt.strftime("%d/%m/%Y")
