@@ -9,13 +9,10 @@ from dvf import (
     get_mutations_by_id_parcelle,
     normaliser_mutations
 )
-from map import generer_carte_complete
+from map import generer_carte_interactive
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
-
-if "afficher_mutations" not in st.session_state:
-    st.session_state.afficher_mutations = False
 
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
@@ -63,74 +60,38 @@ if filtre != "Tous":
     df = df[df["Immeuble"] == filtre]
 st.dataframe(df)
 
-# 📊 Statistiques
-st.subheader("Statistiques de prospection")
-total, contactes, interet, taux = stats_prospection(df)
-st.metric("Total entrées", total)
-st.metric("Contactés", contactes)
-st.metric("Intéressés", interet)
-st.metric("Taux de conversion", f"{taux}%")
-st.plotly_chart(graphique_interet(df))
-
-# 🔎 Exploration DVF ciblée
-st.subheader("Exploration DVF par commune, section et parcelle")
+# 🔎 Carte interactive DVF
+st.subheader("🗺️ Carte interactive DVF")
 
 communes = get_communes_du_departement("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
-commune_default = "Lyon 3e Arrondissement"
-commune_names = sorted(commune_nom_to_code.keys())
-default_index = commune_names.index(commune_default) if commune_default in commune_names else 0
-commune_choisie = st.selectbox("Commune", commune_names, index=default_index)
+commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
+commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
-section_features = get_sections(code_commune)
-section_codes = [s["properties"]["code"] for s in section_features]
-section_choisie = st.selectbox("Section cadastrale", section_codes)
-code_section = section_choisie.zfill(5)
-section_geo = [s for s in section_features if s["properties"]["code"] == section_choisie]
-
+sections = get_sections(code_commune)
 parcelles = get_parcelles_geojson(code_commune)
-parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
-parcelle_ids = [p["id"] for p in parcelles_section]
-parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
-parcelle_geo = next((p for p in parcelles_section if p["id"] == parcelle_choisie), None)
 
-# 🗺️ Carte 1 : parcelles de la section
-m = generer_carte_complete(section_features, parcelles_section, [], set())
-st.subheader("🗺️ Carte cadastrale")
-st_folium(m, width=700, height=500, returned_objects=[])
+m = generer_carte_interactive(sections, parcelles)
+result = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
 
-# 📑 Mutations
-if st.button("Afficher mutations"):
-    st.session_state.afficher_mutations = True
-    st.session_state.parcelle_choisie = parcelle_choisie
+clicked = result.get("last_active_drawing", {}).get("properties", {})
+clicked_id = clicked.get("id", "")
+clicked_type = clicked.get("type", "")
 
-if st.session_state.afficher_mutations:
-    mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_choisie)
+if clicked_type == "section":
+    st.subheader(f"📍 Parcelles de la section {clicked_id}")
+    parcelles_section = [p for p in parcelles if p["id"][5:10] == clicked_id]
+    st.write(f"{len(parcelles_section)} parcelles trouvées.")
+elif clicked_type == "parcelle":
+    st.subheader(f"📑 Mutations de la parcelle {clicked_id}")
+    mutations = get_mutations_by_id_parcelle(clicked_id)
     if not mutations:
         st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
     else:
         df_mutations = normaliser_mutations(mutations)
         df_mutations["Date mutation"] = df_mutations["Date mutation"].dt.strftime("%d/%m/%Y")
-        st.subheader("Mutations DVF")
         st.dataframe(df_mutations)
-
-        mutation_points = []
-        parcelles_mutées = set()
-        for m in mutations:
-            for i in m.get("infos", []):
-                mutation_points.append({
-                    "latitude": i.get("latitude"),
-                    "longitude": i.get("longitude"),
-                    "valeur_fonciere": i.get("valeur_fonciere"),
-                    "type_local": i.get("type_local")
-                })
-                parcelles_mutées.add(i.get("id_parcelle"))
-
-        # 🗺️ Carte 2 : mutations sur la section
-        m = generer_carte_complete(section_features, parcelles_section, mutation_points, parcelles_mutées)
-        st.subheader("🗺️ Carte avec mutations")
-        st_folium(m, width=700, height=500, returned_objects=[])
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")
