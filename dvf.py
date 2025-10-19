@@ -82,7 +82,7 @@ def normaliser_mutations(mutations):
             lots = safe_int(info.get("nombre_lots"))
 
             lignes.append({
-                "Date mutation": pd.to_datetime(info.get("date_mutation"), errors="coerce"),
+                "Date mutation": pd.to_datetime(info.get("date_mutation"), errors="coerce").dt.strftime("%d/%m/%Y"),
                 "Nature mutation": info.get("nature_mutation"),
                 "Valeur foncière (€)": f"{valeur:,.0f}".replace(",", " ").replace(".", ",") + " €",
                 "Type local": info.get("type_local"),
