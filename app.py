@@ -99,9 +99,8 @@ parcelle_ids = [p["id"] for p in parcelles_section]
 parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
 parcelle_geo = next((p for p in parcelles_section if p["id"] == parcelle_choisie), None)
 
-# 🗺️ Carte toujours centrée sur la section/parcelle
-mutation_points = []
-m = generer_carte_complete(section_geo, parcelles_section, mutation_points)
+# Carte initiale sans mutations
+m = generer_carte_complete(section_features, parcelles_section, [], set())
 st.subheader("🗺️ Carte cadastrale")
 st_folium(m, width=700, height=500, returned_objects=[])
 
@@ -134,6 +133,7 @@ if st.session_state.afficher_mutations:
         st.dataframe(df_filtré)
 
         mutation_points = []
+        parcelles_mutées = set()
         for m in mutations:
             for i in m.get("infos", []):
                 mutation_points.append({
@@ -142,8 +142,9 @@ if st.session_state.afficher_mutations:
                     "valeur_fonciere": i.get("valeur_fonciere"),
                     "type_local": i.get("type_local")
                 })
+                parcelles_mutées.add(i.get("id_parcelle"))
 
-        m = generer_carte_complete(section_geo, [parcelle_geo], mutation_points)
+        m = generer_carte_complete(section_features, parcelles_section, mutation_points, parcelles_mutées)
         st.subheader("🗺️ Carte avec mutations")
         st_folium(m, width=700, height=500, returned_objects=[])
     else:

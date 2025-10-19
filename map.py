@@ -10,8 +10,7 @@ def get_centroid(feature):
         lon, lat = 4.85, 45.76
     return lat, lon
 
-def generer_carte_complete(sections, parcelles, mutation_points):
-    # Centrage sur première parcelle ou section
+def generer_carte_complete(sections, parcelles, mutation_points, parcelles_mutées=None):
     if parcelles:
         lat, lon = get_centroid(parcelles[0])
     elif sections:
@@ -30,13 +29,16 @@ def generer_carte_complete(sections, parcelles, mutation_points):
             tooltip=s["properties"].get("code", "")
         ).add_to(m)
 
-    # 🟩 Parcelles
+    # 🟩 / 🟥 Parcelles
+    parcelles_mutées = parcelles_mutées or set()
     for p in parcelles:
+        pid = p["id"]
+        color = "red" if pid in parcelles_mutées else "green"
         folium.GeoJson(
             p,
             name="Parcelles",
-            style_function=lambda x: {"color": "green", "weight": 1, "fillOpacity": 0.2},
-            tooltip=p["id"]
+            style_function=lambda x, c=color: {"color": c, "weight": 1, "fillOpacity": 0.2},
+            tooltip=pid
         ).add_to(m)
 
     # 🔴 Mutations
