@@ -1,10 +1,5 @@
 import folium
 
-def generer_carte(geojson, center=[45.76, 4.85], zoom=15):
-    m = folium.Map(location=center, zoom_start=zoom)
-    folium.GeoJson(geojson, name="Parcelles").add_to(m)
-    return m
-
 def generer_carte_parcelles(geojson):
     m = folium.Map(location=[45.76, 4.85], zoom_start=15)
     for feature in geojson["features"]:

@@ -1,8 +1,14 @@
 import streamlit as st
 from datetime import datetime
 from prospection import ajouter_entree, charger_donnees
-from dvf import get_mutations, get_parcelles_geojson, get_mutations_by_parcelle
-from map import generer_carte, generer_carte_parcelles
+from dvf import (
+    get_mutations,
+    get_mutations_by_parcelle,
+    get_parcelles_geojson,
+    get_sections_geojson,
+    get_communes_du_departement
+)
+from map import generer_carte_parcelles
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
@@ -19,7 +25,7 @@ with st.form("ajout_contact"):
         adresse = st.text_input("Adresse")
         etage = st.text_input("Étage")
         nom = st.text_input("Nom affiché")
-        type_bien = st.selectbox("Type de bien", ["T1", "T2", "T3","T4", "Maison", "Inconnu"])
+        type_bien = st.selectbox("Type de bien", ["T1", "T2", "T3", "Maison", "Inconnu"])
     with col2:
         contacte = st.radio("Contacté ?", ["Oui", "Non"])
         interet = st.selectbox("Intérêt", ["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"])
@@ -68,42 +74,35 @@ st.metric("Intéressés", interet)
 st.metric("Taux de conversion", f"{taux}%")
 st.plotly_chart(graphique_interet(df))
 
-# 🔍 Mutations DVF par section
-st.subheader("Mutations DVF par section cadastrale")
-code_commune = st.text_input("Code INSEE commune", value="69383")
-section = st.text_input("Section cadastrale", value="000AB")
-date_min = st.date_input("Date minimale", value=datetime(2022, 1, 1))
-date_max = st.date_input("Date maximale", value=datetime(2025, 12, 31))
+# 🔎 Exploration DVF ciblée par parcelle
+st.subheader("Exploration DVF ciblée par parcelle")
 
-if st.button("Rechercher les mutations DVF"):
-    mutations = get_mutations(code_commune, section)
+code_departement = "69"
+communes = get_communes_du_departement(code_departement)
+commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
+commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()))
+code_commune = commune_nom_to_code[commune_choisie]
+
+sections = get_sections_geojson(code_commune)
+section_ids = [s["properties"]["code"] for s in sections]
+section_choisie = st.selectbox("Section cadastrale", section_ids)
+
+parcelles = get_parcelles_geojson(code_commune)
+parcelles_section = [p for p in parcelles if p["id"].startswith(section_choisie)]
+parcelle_ids = [p["id"] for p in parcelles_section]
+parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
+
+if st.button("Afficher mutations et carte"):
+    mutations = get_mutations_by_parcelle(parcelle_choisie)
     if isinstance(mutations, list):
-        filtrées = [
-            m for m in mutations
-            if date_min.strftime("%Y-%m-%d") <= m["date_mutation"] <= date_max.strftime("%Y-%m-%d")
-        ]
-        st.success(f"{len(filtrées)} mutations trouvées")
-        st.dataframe(filtrées)
+        st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
+        st.dataframe(mutations)
     else:
         st.error(mutations.get("error", "Erreur inconnue"))
 
-# 🗺️ Carte des parcelles + sélection
-st.subheader("Carte des parcelles cadastrales")
-geojson = get_parcelles_geojson(code_commune)
-if "features" in geojson:
-    parcelles = [f["id"] for f in geojson["features"]]
-    parcelle_choisie = st.selectbox("Choisir une parcelle", parcelles)
-    if parcelle_choisie:
-        mutations_parcelle = get_mutations_by_parcelle(parcelle_choisie)
-        if isinstance(mutations_parcelle, list):
-            st.success(f"{len(mutations_parcelle)} mutations pour {parcelle_choisie}")
-            st.dataframe(mutations_parcelle)
-        else:
-            st.error(mutations_parcelle.get("error", "Erreur inconnue"))
+    geojson = {"type": "FeatureCollection", "features": parcelles_section}
     m = generer_carte_parcelles(geojson)
     st_folium(m, width=700, height=500)
-else:
-    st.error("Impossible de charger les parcelles")
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")
