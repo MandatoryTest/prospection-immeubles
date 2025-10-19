@@ -1,17 +1,31 @@
 import requests
 
-BASE_URL = "https://app.dvf.etalab.gouv.fr"
+BASE_DVF = "https://app.dvf.etalab.gouv.fr"
 
 def get_communes_du_departement(code_departement="69"):
-    url = f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code"
     try:
-        r = requests.get(url)
-        return r.json() if r.status_code == 200 else []
+        # Communes classiques
+        r1 = requests.get(f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code")
+        communes = r1.json() if r1.status_code == 200 else []
+
+        # Arrondissements municipaux
+        r2 = requests.get(f"{BASE_DVF}/donneesgeo/arrondissements_municipaux-20180711.json")
+        arrondissements = r2.json()["features"] if r2.status_code == 200 else []
+
+        for a in arrondissements:
+            props = a["properties"]
+            if props["code"].startswith(code_departement):
+                communes.append({
+                    "nom": props["nom"],
+                    "code": props["code"]
+                })
+
+        return sorted(communes, key=lambda c: c["nom"])
     except Exception:
         return []
 
 def get_sections(code_commune):
-    url = f"{BASE_URL}/api/sections/{code_commune}"
+    url = f"{BASE_DVF}/api/sections/{code_commune}"
     try:
         r = requests.get(url)
         return r.json().get("sections", []) if r.status_code == 200 else []
@@ -20,7 +34,7 @@ def get_sections(code_commune):
 
 def get_mutations(code_commune, section):
     section = section.zfill(5)
-    url = f"{BASE_URL}/api/mutations3/{code_commune}/{section}"
+    url = f"{BASE_DVF}/api/mutations3/{code_commune}/{section}"
     try:
         r = requests.get(url)
         return r.json().get("mutations", []) if r.status_code == 200 else []
