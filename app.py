@@ -126,6 +126,7 @@ if carte_retour and "last_active_drawing" in carte_retour:
     if clicked and "id" in clicked:
         st.session_state["parcelle_choisie"] = clicked["id"]
         st.success(f"📍 Parcelle sélectionnée : {clicked['id']}")
+        st.experimental_rerun()
 
 # 📑 Mutations filtrées
 if df_mutations.empty:
