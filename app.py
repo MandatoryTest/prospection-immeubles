@@ -93,44 +93,47 @@ code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
-# 🖱️ Sélection dynamique via clic sur carte
-if "parcelle_selection" not in st.session_state:
-    st.session_state["parcelle_selection"] = parcelle_ids[0]
+# 🖱️ Parcelle sélectionnée par défaut
+parcelle_selectionnée = parcelle_ids[0]
 
-parcelle_choisie = st.selectbox(
-    "Parcelle",
-    parcelle_ids,
-    index=parcelle_ids.index(st.session_state["parcelle_selection"]),
-    key="parcelle_selection"
-)
-
-mutations = get_mutations_by_id_parcelle(parcelle_choisie)
-df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
-
-# 🗺️ Carte interactive avec retour de clic
+# 🗺️ Carte interactive
 mutation_points = []
 parcelles_mutées = set()
-for m in mutations:
-    for i in m.get("infos", []):
-        mutation_points.append({
-            "latitude": i.get("latitude"),
-            "longitude": i.get("longitude"),
-            "valeur_fonciere": i.get("valeur_fonciere"),
-            "type_local": i.get("type_local")
-        })
-        parcelles_mutées.add(i.get("id_parcelle"))
+for p in parcelles_section:
+    pid = p["id"]
+    mutations = get_mutations_by_id_parcelle(pid)
+    for m in mutations:
+        for i in m.get("infos", []):
+            mutation_points.append({
+                "latitude": i.get("latitude"),
+                "longitude": i.get("longitude"),
+                "valeur_fonciere": i.get("valeur_fonciere"),
+                "type_local": i.get("type_local")
+            })
+            parcelles_mutées.add(pid)
 
 m = generer_carte_complete(sections, parcelles_section, mutation_points, parcelles_mutées)
 st.subheader("🗺️ Carte des mutations DVF")
 carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
 
-# 🔄 Mise à jour de la parcelle sélectionnée si clic
+# 🔄 Mise à jour si clic
 if carte_retour and "last_active_drawing" in carte_retour:
     clicked = carte_retour["last_active_drawing"]
-    if clicked and "id" in clicked:
-        st.session_state["parcelle_selection"] = clicked["id"]
+    if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
+        parcelle_selectionnée = clicked["id"]
+        st.info(f"📍 Parcelle sélectionnée : {parcelle_selectionnée}")
 
-# 📑 Mutations filtrées
+# 📦 Sélecteur de parcelle (synchronisé)
+parcelle_choisie = st.selectbox(
+    "Parcelle",
+    parcelle_ids,
+    index=parcelle_ids.index(parcelle_selectionnée)
+)
+
+# 📑 Mutations DVF
+mutations = get_mutations_by_id_parcelle(parcelle_choisie)
+df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
+
 if df_mutations.empty:
     st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
 else:
@@ -151,7 +154,6 @@ else:
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
-    # 📐 Alignement par nom de colonne
     colonnes_droite = [
         "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
         "Pièces", "Nombre de lots"
