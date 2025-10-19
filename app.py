@@ -5,7 +5,7 @@ from dvf import (
     get_communes_du_departement,
     get_sections,
     get_parcelles_geojson,
-    get_mutations_by_parcelle
+    get_mutations_by_id_parcelle
 )
 from map import generer_carte_parcelles
 from stats import stats_prospection, graphique_interet
@@ -94,7 +94,7 @@ if sections:
         parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
 
         if st.button("Afficher mutations et carte"):
-            mutations = get_mutations_by_parcelle(code_commune, code_section, parcelle_choisie)
+            mutations = get_mutations_by_id_parcelle(parcelle_choisie)
             if mutations:
                 st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
                 st.dataframe(mutations)

@@ -46,23 +46,13 @@ def get_parcelles_geojson(code_commune):
     except Exception:
         return []
 
-def get_mutations(code_commune, section):
-    if not section:
-        return {"error": "Section cadastrale manquante"}
-    section = str(section).zfill(5)
-    url = f"{BASE_DVF}/api/mutations3/{code_commune}/{section}"
+def get_mutations_by_id_parcelle(id_parcelle):
+    url = f"{BASE_DVF}/api/parcelles2/{id_parcelle}/from=2020-01-01&to=2025-12-31"
     try:
         r = requests.get(url)
-        return r.json().get("mutations", []) if r.status_code == 200 else []
+        if r.status_code == 200:
+            return r.json().get("mutations", [])
+        else:
+            return []
     except Exception:
-        return []
-
-def get_mutations_by_parcelle(code_commune, section, parcelle_id):
-    mutations = get_mutations(code_commune, section)
-    if isinstance(mutations, list):
-        return [
-            m for m in mutations
-            if parcelle_id in [p["id_parcelle"] for p in m.get("parcelles", [])]
-        ]
-    else:
         return []
