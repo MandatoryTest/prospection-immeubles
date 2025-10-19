@@ -117,17 +117,18 @@ else:
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
-    # 📐 Alignement manuel via padding
-    def align_right(val): return f"{val:>12}"
-    def align_center(val): return f"{val:^20}"
+    # 📐 Alignement par nom de colonne
+    colonnes_droite = [
+        "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
+        "Pièces", "Nombre de lots"
+    ]
+    colonnes_centre = ["Date mutation", "Nature mutation", "Code postal"]
 
-    df_affichage = df_filtré.copy()
-    for col in ["Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)", "Pièces", "Nombre de lots"]:
-        df_affichage[col] = df_affichage[col].apply(align_right)
-    for col in ["Date mutation", "Nature mutation", "Code postal"]:
-        df_affichage[col] = df_affichage[col].apply(align_center)
+    styler = df_filtré.style \
+        .set_properties(**{"text-align": "right"}, subset=colonnes_droite) \
+        .set_properties(**{"text-align": "center"}, subset=colonnes_centre)
 
-    st.table(df_affichage)
+    st.dataframe(styler)
 
     mutation_points = []
     parcelles_mutées = set()
