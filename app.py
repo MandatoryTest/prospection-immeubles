@@ -8,12 +8,11 @@ from dvf import (
     get_mutations_by_id_parcelle,
     normaliser_mutations
 )
-from map import generer_carte_parcelles
+from map import generer_carte_complete
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
 
-# Initialisation de l'état
 if "afficher_mutations" not in st.session_state:
     st.session_state.afficher_mutations = False
 
@@ -86,39 +85,61 @@ commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()))
 code_commune = commune_nom_to_code[commune_choisie]
 
-sections = get_sections(code_commune)
-if sections:
-    section_choisie = st.selectbox("Section cadastrale", sections)
-    code_section = section_choisie.zfill(5)
+section_features = get_sections(code_commune)
+section_codes = [s["properties"]["code"] for s in section_features]
+section_choisie = st.selectbox("Section cadastrale", section_codes)
+code_section = section_choisie.zfill(5)
 
-    parcelles = get_parcelles_geojson(code_commune)
-    parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
-    parcelle_ids = [p["id"] for p in parcelles_section]
+parcelles = get_parcelles_geojson(code_commune)
+parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
+parcelle_ids = [p["id"] for p in parcelles_section]
+parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
 
-    if parcelle_ids:
-        parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
+if st.button("Afficher mutations et carte"):
+    st.session_state.afficher_mutations = True
+    st.session_state.parcelle_choisie = parcelle_choisie
 
-        if st.button("Afficher mutations et carte"):
-            st.session_state.afficher_mutations = True
-            st.session_state.parcelle_choisie = parcelle_choisie
+if st.session_state.afficher_mutations:
+    mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_choisie)
+    if mutations:
+        df_mutations = normaliser_mutations(mutations)
 
-        if st.session_state.afficher_mutations:
-            mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_choisie)
-            if mutations:
-                st.success(f"{len(mutations)} mutations pour {st.session_state.parcelle_choisie}")
-                df_mutations = normaliser_mutations(mutations)
-                st.dataframe(df_mutations)
+        # 🧮 Filtres
+        st.subheader("Filtres DVF")
+        types = sorted(df_mutations["Type local"].dropna().unique())
+        type_filtre = st.multiselect("Type de bien", types, default=types)
+        date_min = st.date_input("Date min", value=df_mutations["Date mutation"].min())
+        date_max = st.date_input("Date max", value=df_mutations["Date mutation"].max())
 
-                parcelle_geo = next((p for p in parcelles_section if p["id"] == st.session_state.parcelle_choisie), None)
-                if parcelle_geo:
-                    m = generer_carte_parcelles([parcelle_geo])
-                    st_folium(m, width=700, height=500)
-            else:
-                st.warning("Aucune mutation trouvée pour cette parcelle.")
+        df_filtré = df_mutations[
+            (df_mutations["Type local"].isin(type_filtre)) &
+            (df_mutations["Date mutation"] >= pd.to_datetime(date_min)) &
+            (df_mutations["Date mutation"] <= pd.to_datetime(date_max))
+        ]
+
+        # 📅 Format JJ/MM/AAAA
+        df_filtré["Date mutation"] = df_filtré["Date mutation"].dt.strftime("%d/%m/%Y")
+
+        st.success(f"{len(df_filtré)} mutations filtrées")
+        st.dataframe(df_filtré)
+
+        # 🗺️ Carte complète
+        parcelle_geo = next((p for p in parcelles_section if p["id"] == st.session_state.parcelle_choisie), None)
+        mutation_points = []
+        for m in mutations:
+            for i in m.get("infos", []):
+                mutation_points.append({
+                    "latitude": i.get("latitude"),
+                    "longitude": i.get("longitude"),
+                    "valeur_fonciere": i.get("valeur_fonciere"),
+                    "type_local": i.get("type_local")
+                })
+
+        section_geo = [s for s in section_features if s["properties"]["code"] == section_choisie]
+        m = generer_carte_complete(section_geo, [parcelle_geo], mutation_points)
+        st_folium(m, width=700, height=500)
     else:
-        st.warning("Aucune parcelle trouvée pour cette section.")
-else:
-    st.warning("Aucune section cadastrale disponible pour cette commune.")
+        st.warning("Aucune mutation trouvée pour cette parcelle.")
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")

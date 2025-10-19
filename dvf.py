@@ -29,8 +29,7 @@ def get_sections(code_commune):
     try:
         r = requests.get(url)
         if r.status_code == 200 and "features" in r.json():
-            features = r.json()["features"]
-            return sorted({f["properties"]["code"] for f in features})
+            return r.json()["features"]
         else:
             return []
     except Exception:
@@ -63,17 +62,32 @@ def normaliser_mutations(mutations):
     for mutation in mutations:
         infos = mutation.get("infos", [])
         for info in infos:
+            valeur = float(info.get("valeur_fonciere", 0))
+            surface = float(info.get("surface_reelle_bati") or 0)
+            carrez = float(info.get("lot1_surface_carrez") or 0)
+
             lignes.append({
-                "Date": info.get("date_mutation"),
-                "Valeur foncière (€)": info.get("valeur_fonciere"),
+                "Date mutation": pd.to_datetime(info.get("date_mutation"), errors="coerce"),
+                "Nature mutation": info.get("nature_mutation"),
+                "Valeur foncière (€)": f"{valeur:,.0f} €",
                 "Type local": info.get("type_local"),
-                "Surface (m²)": info.get("surface_reelle_bati"),
-                "Pièces": info.get("nombre_pieces_principales"),
-                "Adresse": f"{info.get('adresse_numero', '')} {info.get('adresse_nom_voie', '')}",
+                "Surface bâtie (m²)": f"{surface:.2f}",
+                "Lot Carrez (m²)": f"{carrez:.2f}",
+                "Pièces": int(info.get("nombre_pieces_principales") or 0),
+                "Nombre de lots": int(info.get("nombre_lots") or 0),
+                "Adresse": f"{info.get('adresse_numero', '')} {info.get('adresse_nom_voie', '')}".strip(),
+                "Code postal": info.get("code_postal"),
                 "Commune": info.get("nom_commune"),
-                "Parcelle": info.get("id_parcelle"),
-                "Lots": info.get("nombre_lots"),
-                "Carrez lot 1": info.get("lot1_surface_carrez"),
-                "Nature mutation": info.get("nature_mutation")
+                "Section": info.get("section_prefixe"),
+                "Parcelle": info.get("id_parcelle")
             })
-    return pd.DataFrame(lignes)
+    df = pd.DataFrame(lignes)
+    colonnes = [
+        "Date mutation", "Nature mutation", "Valeur foncière (€)",
+        "Type local", "Surface bâtie (m²)", "Lot Carrez (m²)", "Pièces",
+        "Nombre de lots", "Adresse", "Code postal", "Commune",
+        "Section", "Parcelle"
+    ]
+    df = df[colonnes]
+    df = df.sort_values("Date mutation", ascending=False)
+    return df
