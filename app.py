@@ -92,14 +92,45 @@ section_choisie = st.selectbox("Section cadastrale", section_codes)
 code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
-parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
+
+# 🖱️ Sélection dynamique via clic sur carte
+parcelle_choisie = st.selectbox(
+    "Parcelle",
+    parcelle_ids,
+    index=parcelle_ids.index(st.session_state.get("parcelle_choisie", parcelle_ids[0]))
+)
 
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
-if not mutations:
+df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
+
+# 🗺️ Carte interactive avec retour de clic
+mutation_points = []
+parcelles_mutées = set()
+for m in mutations:
+    for i in m.get("infos", []):
+        mutation_points.append({
+            "latitude": i.get("latitude"),
+            "longitude": i.get("longitude"),
+            "valeur_fonciere": i.get("valeur_fonciere"),
+            "type_local": i.get("type_local")
+        })
+        parcelles_mutées.add(i.get("id_parcelle"))
+
+m = generer_carte_complete(sections, parcelles_section, mutation_points, parcelles_mutées)
+st.subheader("🗺️ Carte des mutations DVF")
+carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
+
+# 🔄 Mise à jour de la parcelle sélectionnée si clic
+if carte_retour and "last_active_drawing" in carte_retour:
+    clicked = carte_retour["last_active_drawing"]
+    if clicked and "id" in clicked:
+        st.session_state["parcelle_choisie"] = clicked["id"]
+        st.success(f"📍 Parcelle sélectionnée : {clicked['id']}")
+
+# 📑 Mutations filtrées
+if df_mutations.empty:
     st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
 else:
-    df_mutations = normaliser_mutations(mutations)
-
     st.subheader("Filtres DVF")
     types = sorted(df_mutations["Type local"].dropna().unique())
     type_filtre = st.multiselect("Type de bien", types, default=types)
@@ -129,22 +160,6 @@ else:
         .set_properties(**{"text-align": "center"}, subset=colonnes_centre)
 
     st.dataframe(styler)
-
-    mutation_points = []
-    parcelles_mutées = set()
-    for m in mutations:
-        for i in m.get("infos", []):
-            mutation_points.append({
-                "latitude": i.get("latitude"),
-                "longitude": i.get("longitude"),
-                "valeur_fonciere": i.get("valeur_fonciere"),
-                "type_local": i.get("type_local")
-            })
-            parcelles_mutées.add(i.get("id_parcelle"))
-
-    m = generer_carte_complete(sections, parcelles_section, mutation_points, parcelles_mutées)
-    st.subheader("🗺️ Carte des mutations DVF")
-    st_folium(m, width=700, height=500, returned_objects=[])
 
 # 📦 Export PDF
 st.subheader("Export PDF de la tournée")
