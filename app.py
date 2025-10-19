@@ -113,22 +113,21 @@ else:
         (df_mutations["Date mutation"] >= date_min) &
         (df_mutations["Date mutation"] <= date_max)
     ].copy()
-    df_filtré["Date mutation"] = df_filtré["Date mutation"].dt.strftime("%d/%m/%Y")
+    df_filtré["Date mutation"] = pd.to_datetime(df_filtré["Date mutation"], errors="coerce").dt.strftime("%d/%m/%Y")
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
-    # 📐 Alignement personnalisé
-    colonnes_droite = [
-        "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
-        "Pièces", "Nombre de lots"
-    ]
-    colonnes_centre = ["Date mutation", "Nature mutation", "Code postal"]
+    # 📐 Alignement manuel via padding
+    def align_right(val): return f"{val:>12}"
+    def align_center(val): return f"{val:^20}"
 
-    styler = df_filtré.style \
-        .set_properties(**{"text-align": "right"}, subset=colonnes_droite) \
-        .set_properties(**{"text-align": "center"}, subset=colonnes_centre)
+    df_affichage = df_filtré.copy()
+    for col in ["Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)", "Pièces", "Nombre de lots"]:
+        df_affichage[col] = df_affichage[col].apply(align_right)
+    for col in ["Date mutation", "Nature mutation", "Code postal"]:
+        df_affichage[col] = df_affichage[col].apply(align_center)
 
-    st.dataframe(styler)
+    st.table(df_affichage)
 
     mutation_points = []
     parcelles_mutées = set()
