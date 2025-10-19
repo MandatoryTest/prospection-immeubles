@@ -10,59 +10,33 @@ def get_centroid(feature):
         lon, lat = 4.85, 45.76
     return lat, lon
 
-def generer_carte_complete(sections, parcelles, mutation_points, parcelles_mutées=None):
-    # Centrage sur première parcelle ou section
-    if parcelles:
-        lat, lon = get_centroid(parcelles[0])
-    elif sections:
-        lat, lon = get_centroid(sections[0])
-    else:
-        lat, lon = 45.76, 4.85
-
-    m = folium.Map(location=[lat, lon], zoom_start=17)
+def generer_carte_interactive(sections, parcelles):
+    lat, lon = get_centroid(sections[0]) if sections else (45.76, 4.85)
+    m = folium.Map(location=[lat, lon], zoom_start=16)
 
     # 🟦 Sections
     for s in sections:
+        s["properties"]["id"] = s["properties"]["code"]
+        s["properties"]["type"] = "section"
         folium.GeoJson(
             s,
             name="Sections",
             style_function=lambda x: {"color": "blue", "weight": 1, "fillOpacity": 0.1},
-            tooltip=s["properties"].get("code", "")
+            highlight_function=lambda x: {"weight": 3, "color": "orange"},
+            tooltip=s["properties"]["code"]
         ).add_to(m)
 
-    # 🟩 / 🟥 Parcelles
-    parcelles_mutées = parcelles_mutées or set()
+    # 🟩 Parcelles
     for p in parcelles:
-        pid = p["id"]
-        color = "red" if pid in parcelles_mutées else "green"
+        p["properties"]["id"] = p["id"]
+        p["properties"]["type"] = "parcelle"
         folium.GeoJson(
             p,
             name="Parcelles",
-            style_function=lambda x, c=color: {"color": c, "weight": 1, "fillOpacity": 0.2},
-            tooltip=pid
+            style_function=lambda x: {"color": "green", "weight": 1, "fillOpacity": 0.2},
+            highlight_function=lambda x: {"weight": 3, "color": "orange"},
+            tooltip=p["id"]
         ).add_to(m)
-
-    # 🔴 Mutations
-    for pt in mutation_points:
-        lat = pt.get("latitude")
-        lon = pt.get("longitude")
-        popup = f"{format_valeur(pt.get('valeur_fonciere'))} - {pt.get('type_local', '')}"
-        if lat and lon:
-            folium.CircleMarker(
-                location=[float(lat), float(lon)],
-                radius=6,
-                color="red",
-                fill=True,
-                fill_opacity=0.7,
-                popup=popup
-            ).add_to(m)
 
     folium.LayerControl().add_to(m)
     return m
-
-def format_valeur(valeur):
-    try:
-        montant = float(valeur)
-        return f"{montant:,.2f}".replace(",", " ").replace(".", ",") + " €"
-    except:
-        return "N/A"
