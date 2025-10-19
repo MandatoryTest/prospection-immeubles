@@ -57,7 +57,6 @@ def get_mutations_by_id_parcelle(id_parcelle):
     except Exception:
         return []
 
-# 🔧 Conversions sécurisées
 def safe_float(value):
     try:
         return float(value)
@@ -80,9 +79,10 @@ def normaliser_mutations(mutations):
             carrez = safe_float(info.get("lot1_surface_carrez"))
             pieces = safe_int(info.get("nombre_pieces_principales"))
             lots = safe_int(info.get("nombre_lots"))
+            date = pd.to_datetime(info.get("date_mutation"), errors="coerce").strftime("%d/%m/%Y")
 
             lignes.append({
-                "Date mutation": pd.to_datetime(info.get("date_mutation"), errors="coerce").dt.strftime("%d/%m/%Y"),
+                "Date mutation": date,
                 "Nature mutation": info.get("nature_mutation"),
                 "Valeur foncière (€)": f"{valeur:,.0f}".replace(",", " ").replace(".", ",") + " €",
                 "Type local": info.get("type_local"),

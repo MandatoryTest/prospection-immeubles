@@ -141,15 +141,16 @@ else:
     st.subheader("Filtres DVF")
     types = sorted(df_mutations["Type local"].dropna().unique())
     type_filtre = st.multiselect("Type de bien", types, default=types)
-    date_min_raw = st.date_input("Date min", value=df_mutations["Date mutation"].min().date())
-    date_max_raw = st.date_input("Date max", value=df_mutations["Date mutation"].max().date())
-    date_min = pd.Timestamp(date_min_raw)
-    date_max = pd.Timestamp(date_max_raw)
+
+    date_min_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).min().date()
+    date_max_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).max().date()
+    date_min = st.date_input("Date min", value=date_min_raw)
+    date_max = st.date_input("Date max", value=date_max_raw)
 
     df_filtré = df_mutations[
         (df_mutations["Type local"].isin(type_filtre)) &
-        (df_mutations["Date mutation"] >= date_min) &
-        (df_mutations["Date mutation"] <= date_max)
+        (pd.to_datetime(df_mutations["Date mutation"], dayfirst=True) >= pd.Timestamp(date_min)) &
+        (pd.to_datetime(df_mutations["Date mutation"], dayfirst=True) <= pd.Timestamp(date_max))
     ].copy()
 
     st.success(f"{len(df_filtré)} mutations filtrées")
