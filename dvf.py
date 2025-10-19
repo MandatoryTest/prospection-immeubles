@@ -1,4 +1,5 @@
 import requests
+import pandas as pd
 
 BASE_DVF = "https://app.dvf.etalab.gouv.fr"
 BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
@@ -56,3 +57,18 @@ def get_mutations_by_id_parcelle(id_parcelle):
             return []
     except Exception:
         return []
+
+def normaliser_mutations(mutations):
+    lignes = []
+    for m in mutations:
+        lignes.append({
+            "Date": m.get("date_mutation"),
+            "Valeur foncière (€)": m.get("valeur_fonciere"),
+            "Type local": m.get("type_local"),
+            "Surface (m²)": m.get("surface_reelle_bati"),
+            "Adresse": m.get("adresse"),
+            "Code commune": m.get("code_commune"),
+            "Section": m.get("parcelles", [{}])[0].get("section"),
+            "Parcelle": m.get("parcelles", [{}])[0].get("id_parcelle")
+        })
+    return pd.DataFrame(lignes)

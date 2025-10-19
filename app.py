@@ -5,12 +5,17 @@ from dvf import (
     get_communes_du_departement,
     get_sections,
     get_parcelles_geojson,
-    get_mutations_by_id_parcelle
+    get_mutations_by_id_parcelle,
+    normaliser_mutations
 )
 from map import generer_carte_parcelles
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
+
+# Initialisation de l'état
+if "afficher_mutations" not in st.session_state:
+    st.session_state.afficher_mutations = False
 
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
@@ -94,12 +99,20 @@ if sections:
         parcelle_choisie = st.selectbox("Parcelle", parcelle_ids)
 
         if st.button("Afficher mutations et carte"):
-            mutations = get_mutations_by_id_parcelle(parcelle_choisie)
+            st.session_state.afficher_mutations = True
+            st.session_state.parcelle_choisie = parcelle_choisie
+
+        if st.session_state.afficher_mutations:
+            mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_choisie)
             if mutations:
-                st.success(f"{len(mutations)} mutations pour {parcelle_choisie}")
-                st.dataframe(mutations)
-                m = generer_carte_parcelles(parcelles_section)
-                st_folium(m, width=700, height=500)
+                st.success(f"{len(mutations)} mutations pour {st.session_state.parcelle_choisie}")
+                df_mutations = normaliser_mutations(mutations)
+                st.dataframe(df_mutations)
+
+                parcelle_geo = next((p for p in parcelles_section if p["id"] == st.session_state.parcelle_choisie), None)
+                if parcelle_geo:
+                    m = generer_carte_parcelles([parcelle_geo])
+                    st_folium(m, width=700, height=500)
             else:
                 st.warning("Aucune mutation trouvée pour cette parcelle.")
     else:
