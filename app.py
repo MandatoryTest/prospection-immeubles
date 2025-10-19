@@ -19,7 +19,7 @@ with st.form("ajout_contact"):
         adresse = st.text_input("Adresse")
         etage = st.text_input("Étage")
         nom = st.text_input("Nom affiché")
-        type_bien = st.selectbox("Type de bien", ["T1", "T2", "T3", "Maison", "Inconnu"])
+        type_bien = st.selectbox("Type de bien", ["T1", "T2", "T3","T4", "Maison", "Inconnu"])
     with col2:
         contacte = st.radio("Contacté ?", ["Oui", "Non"])
         interet = st.selectbox("Intérêt", ["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"])
@@ -70,8 +70,8 @@ st.plotly_chart(graphique_interet(df))
 
 # 🔍 Mutations DVF par section
 st.subheader("Mutations DVF par section cadastrale")
-code_commune = st.text_input("Code INSEE commune", value="69381")
-section = st.text_input("Section cadastrale", value="000A")
+code_commune = st.text_input("Code INSEE commune", value="69383")
+section = st.text_input("Section cadastrale", value="000AB")
 date_min = st.date_input("Date minimale", value=datetime(2022, 1, 1))
 date_max = st.date_input("Date maximale", value=datetime(2025, 12, 31))
 
