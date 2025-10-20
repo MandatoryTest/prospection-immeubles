@@ -26,7 +26,7 @@ def detect_parcelle_cliquée(result, parcelle_actuelle):
             return clicked["id"]
     return parcelle_actuelle
 
-# Initialisation session_state pour la parcelle choisie
+# Initialisation session_state
 if "parcelle_choisie" not in st.session_state:
     st.session_state["parcelle_choisie"] = None
 
@@ -133,13 +133,13 @@ else:
                 }
                 df.to_csv("prospection.csv", index=False)
                 st.success("✅ Modifications enregistrées.")
-                st.experimental_rerun()
+                st.rerun()
 
             if suppr:
                 df = df[df["ID"] != selected_id]
                 df.to_csv("prospection.csv", index=False)
                 st.success("❌ Contact supprimé.")
-                st.experimental_rerun()
+                st.rerun()
 
 # 🔔 Relances
 st.subheader("Relances à venir")
@@ -173,27 +173,23 @@ code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
-# Initialiser la parcelle choisie dans session_state si pas valide
 if st.session_state["parcelle_choisie"] not in parcelle_ids:
     st.session_state["parcelle_choisie"] = parcelle_ids[0] if parcelle_ids else None
 
-# Afficher le selectbox avec la valeur en session_state
+parcelles_mutées = {st.session_state["parcelle_choisie"]}
+m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
+result = st_folium(m, width=700, height=500)
+
+nouvelle_parcelle = detect_parcelle_cliquée(result, st.session_state["parcelle_choisie"])
+if nouvelle_parcelle != st.session_state["parcelle_choisie"]:
+    st.session_state["parcelle_choisie"] = nouvelle_parcelle
+    st.rerun()
+# Sélecteur synchronisé avec la carte
 parcelle_choisie = st.selectbox(
     "📦 Parcelle",
     parcelle_ids,
     index=parcelle_ids.index(st.session_state["parcelle_choisie"]) if st.session_state["parcelle_choisie"] else 0
 )
-
-# Générer la carte avec la parcelle choisie
-parcelles_mutées = {parcelle_choisie}
-m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
-result = st_folium(m, width=700, height=500)
-
-# Détecter clic et mettre à jour la parcelle choisie dans session_state
-nouvelle_parcelle = detect_parcelle_cliquée(result, st.session_state["parcelle_choisie"])
-if nouvelle_parcelle != st.session_state["parcelle_choisie"]:
-    st.session_state["parcelle_choisie"] = nouvelle_parcelle
-    st.experimental_rerun()  # Relancer pour mettre à jour le selectbox
 
 # 📄 Mutations DVF
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)

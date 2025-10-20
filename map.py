@@ -41,7 +41,7 @@ def generer_carte_complete(sections, parcelles, mutation_points, parcelles_muté
             tooltip=pid,
             highlight_function=lambda x: {"weight": 3, "color": "orange"}
         ).add_to(m)
-   
+
     folium.LayerControl().add_to(m)
     return m
 
