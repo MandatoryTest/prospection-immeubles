@@ -104,7 +104,10 @@ parcelle_choisie = st.selectbox(
     index=parcelle_ids.index(st.session_state.parcelle_selectionnee),
     key="parcelle_widget"
 )
-st.session_state.parcelle_selectionnee = parcelle_choisie
+
+# 🔄 Synchronisation manuelle
+if parcelle_choisie != st.session_state.parcelle_selectionnee:
+    st.session_state.parcelle_selectionnee = parcelle_choisie
 
 # 🗺️ Carte avec surbrillance
 parcelles_mutées = {st.session_state.parcelle_selectionnee}
@@ -116,8 +119,9 @@ carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_activ
 if carte_retour and "last_active_drawing" in carte_retour:
     clicked = carte_retour["last_active_drawing"]
     if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
-        st.session_state.parcelle_selectionnee = clicked["id"]
-        st.rerun()
+        if clicked["id"] != st.session_state.parcelle_selectionnee:
+            st.session_state.parcelle_selectionnee = clicked["id"]
+            st.experimental_rerun()
 
 # 📑 Mutations DVF pour la parcelle sélectionnée
 mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_selectionnee)
