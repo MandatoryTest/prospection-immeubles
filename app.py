@@ -163,21 +163,26 @@ parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 
+# 🖱️ Carte interactive avec clic
 parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
-st_folium(m, width=700, height=500)
+result = st_folium(m, width=700, height=500)
 
+if result and "last_object_clicked" in result:
+    clicked = result["last_object_clicked"]
+    if clicked and "id" in clicked:
+        parcelle_choisie = clicked["id"]
+
+# 📄 Mutations DVF
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
-# 🎛️ Filtres DVF
 st.subheader("Filtres DVF")
 if df_mutations.empty:
     st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
 else:
     types = sorted(df_mutations["Type local"].dropna().unique())
     type_filtre = st.multiselect("Type de bien", types, default=types)
-
     date_min_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).min().date()
     date_max_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).max().date()
     date_min = st.date_input("Date min", value=date_min_raw)
