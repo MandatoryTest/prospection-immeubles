@@ -1,23 +1,68 @@
 import folium
-from folium import GeoJson
 
-def generer_carte_complete(sections, parcelles, mutations, surbrillance):
-    m = folium.Map(location=[45.76, 4.85], zoom_start=14)
+def get_centroid(feature):
+    coords = feature["geometry"]["coordinates"]
+    if feature["geometry"]["type"] == "Polygon":
+        lon, lat = coords[0][0]
+    elif feature["geometry"]["type"] == "MultiPolygon":
+        lon, lat = coords[0][0][0]
+    else:
+        lon, lat = 4.85, 45.76
+    return lat, lon
 
-    def style_parcelle(feature):
-        id_parcelle = feature["id"]
-        return {
-            "color": "red" if id_parcelle in surbrillance else "gray",
-            "weight": 3 if id_parcelle in surbrillance else 1,
-            "fillOpacity": 0.2
-        }
+def generer_carte_complete(sections, parcelles, mutation_points, parcelles_mutées=None):
+    if parcelles:
+        lat, lon = get_centroid(parcelles[0])
+    elif sections:
+        lat, lon = get_centroid(sections[0])
+    else:
+        lat, lon = 45.76, 4.85
 
-    for f in parcelles:
-        gj = GeoJson(
-            f,
-            style_function=style_parcelle,
-            tooltip=folium.Tooltip(f["id"])
-        )
-        gj.add_to(m)
+    m = folium.Map(location=[lat, lon], zoom_start=17)
 
+    # 🟦 Sections
+    for s in sections:
+        folium.GeoJson(
+            s,
+            name="Sections",
+            style_function=lambda x: {"color": "blue", "weight": 1, "fillOpacity": 0.1},
+            tooltip=s["properties"].get("code", "")
+        ).add_to(m)
+
+    # 🟩 / 🟥 Parcelles cliquables
+    parcelles_mutées = parcelles_mutées or set()
+    for p in parcelles:
+        pid = p["id"]
+        color = "red" if pid in parcelles_mutées else "green"
+        folium.GeoJson(
+            p,
+            name="Parcelles",
+            style_function=lambda x, c=color: {"color": c, "weight": 1, "fillOpacity": 0.2},
+            tooltip=pid,
+            popup=folium.Popup(pid, parse_html=True)
+        ).add_to(m)
+
+    # 🔴 Mutations
+    for pt in mutation_points:
+        lat = pt.get("latitude")
+        lon = pt.get("longitude")
+        popup = f"{format_valeur(pt.get('valeur_fonciere'))} - {pt.get('type_local', '')}"
+        if lat and lon:
+            folium.CircleMarker(
+                location=[float(lat), float(lon)],
+                radius=6,
+                color="red",
+                fill=True,
+                fill_opacity=0.7,
+                popup=popup
+            ).add_to(m)
+
+    folium.LayerControl().add_to(m)
     return m
+
+def format_valeur(valeur):
+    try:
+        montant = float(valeur)
+        return f"{montant:,.2f}".replace(",", " ").replace(".", ",") + " €"
+    except:
+        return "N/A"
