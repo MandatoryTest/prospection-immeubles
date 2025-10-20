@@ -156,6 +156,24 @@ st.metric("Intéressés", interet)
 st.metric("Taux de conversion", f"{taux}%")
 st.plotly_chart(graphique_interet(df))
 
+# 🗺️ Carte DVF
+st.subheader("Carte DVF : mutations par parcelle")
+
+communes = get_communes_du_departement("69")
+commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
+commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
+commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
+code_commune = commune_nom_to_code[commune_choisie]
+
+sections = get_sections(code_commune)
+parcelles = get_parcelles_geojson(code_commune)
+section_codes = [s["properties"]["code"] for s in sections]
+section_choisie = st.selectbox("Section cadastrale", section_codes)
+code_section = section_choisie.zfill(5)
+parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
+parcelle_ids = [p["id"] for p in parcelles_section]
+
+
 st.subheader("🧪 Test carte DVF interactive")
 
 from dvf import get_sections, get_parcelles_geojson, get_mutations_by_id_parcelle, normaliser_mutations
@@ -209,24 +227,6 @@ mutations = get_mutations_by_id_parcelle(st.session_state["parcelle_choisie"])
 df = normaliser_mutations(mutations)
 st.dataframe(df)
 
-
-
-# 🗺️ Carte DVF
-st.subheader("Carte DVF : mutations par parcelle")
-
-communes = get_communes_du_departement("69")
-commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
-commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
-commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
-code_commune = commune_nom_to_code[commune_choisie]
-
-sections = get_sections(code_commune)
-parcelles = get_parcelles_geojson(code_commune)
-section_codes = [s["properties"]["code"] for s in sections]
-section_choisie = st.selectbox("Section cadastrale", section_codes)
-code_section = section_choisie.zfill(5)
-parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
-parcelle_ids = [p["id"] for p in parcelles_section]
 
 if st.session_state["parcelle_choisie"] not in parcelle_ids:
     st.session_state["parcelle_choisie"] = parcelle_ids[0] if parcelle_ids else None
