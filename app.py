@@ -97,13 +97,14 @@ parcelle_ids = [p["id"] for p in parcelles_section]
 if "parcelle_selectionnee" not in st.session_state:
     st.session_state.parcelle_selectionnee = parcelle_ids[0]
 
-# 📦 Sélecteur synchronisé
+# 📦 Sélecteur synchronisé (clé différente)
 parcelle_choisie = st.selectbox(
     "📦 Parcelle",
     parcelle_ids,
     index=parcelle_ids.index(st.session_state.parcelle_selectionnee),
-    key="parcelle_selectionnee"
+    key="parcelle_widget"
 )
+st.session_state.parcelle_selectionnee = parcelle_choisie
 
 # 🗺️ Carte avec surbrillance
 parcelles_mutées = {st.session_state.parcelle_selectionnee}
@@ -116,7 +117,7 @@ if carte_retour and "last_active_drawing" in carte_retour:
     clicked = carte_retour["last_active_drawing"]
     if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
         st.session_state.parcelle_selectionnee = clicked["id"]
-        st.rerun()  # 🔁 Recharger pour refléter immédiatement la sélection
+        st.rerun()
 
 # 📑 Mutations DVF pour la parcelle sélectionnée
 mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_selectionnee)
