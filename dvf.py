@@ -6,10 +6,12 @@ BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
 
 def get_communes_du_departement(code_departement="69"):
     try:
-        r1 = requests.get(f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code", timeout=5)
+        url = f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code"
+        r1 = requests.get(url, timeout=5)
         communes = r1.json() if r1.status_code == 200 else []
 
-        r2 = requests.get(f"{BASE_DVF}/donneesgeo/arrondissements_municipaux-20180711.json", timeout=5)
+        url_arr = f"{BASE_DVF}/donneesgeo/arrondissements_municipaux-20180711.json"
+        r2 = requests.get(url_arr, timeout=5)
         arrondissements = r2.json()["features"] if r2.status_code == 200 else []
 
         for a in arrondissements:
@@ -31,7 +33,7 @@ def get_sections(code_commune):
         r = requests.get(url, timeout=5)
         data = r.json() if r.status_code == 200 else {}
         features = data.get("features", [])
-        print(f"✅ get_sections({code_commune}) → {len(features)} sections")
+        print(f"✅ get_sections → {url} → {len(features)} sections")
         return features if isinstance(features, list) else []
     except Exception as e:
         print(f"⚠️ Erreur get_sections: {e}")
@@ -43,7 +45,7 @@ def get_parcelles_geojson(code_commune):
         r = requests.get(url, timeout=5)
         data = r.json() if r.status_code == 200 else {}
         features = data.get("features", [])
-        print(f"✅ get_parcelles_geojson({code_commune}) → {len(features)} parcelles")
+        print(f"✅ get_parcelles_geojson → {url} → {len(features)} parcelles")
         return features if isinstance(features, list) else []
     except Exception as e:
         print(f"⚠️ Erreur get_parcelles_geojson: {e}")
@@ -54,7 +56,7 @@ def get_mutations_by_id_parcelle(id_parcelle):
     try:
         r = requests.get(url, timeout=5)
         mutations = r.json().get("mutations", []) if r.status_code == 200 else []
-        print(f"✅ get_mutations_by_id_parcelle({id_parcelle}) → {len(mutations)} mutations")
+        print(f"✅ get_mutations_by_id_parcelle → {url} → {len(mutations)} mutations")
         return mutations
     except Exception as e:
         print(f"⚠️ Erreur get_mutations_by_id_parcelle: {e}")

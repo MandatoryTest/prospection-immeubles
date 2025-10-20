@@ -143,17 +143,19 @@ st.plotly_chart(graphique_interet(df))
 
 # 🗺️ Carte DVF
 st.subheader("Carte DVF : mutations par parcelle")
-print("📍 Chargement des communes...")
+
 communes = get_communes("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
 commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
-t0 = time.time()
-sections = get_sections(code_commune)
-print(f"⏱️ get_sections exécuté en {time.time() - t0:.2f} sec")
+url_sections = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code_commune}/geojson/sections"
+url_parcelles = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code_commune}/geojson/parcelles"
+st.caption(f"🔗 URL sections : {url_sections}")
+st.caption(f"🔗 URL parcelles : {url_parcelles}")
 
+sections = get_sections(code_commune)
 parcelles = get_parcelles(code_commune)
 section_codes = [s["properties"]["code"] for s in sections]
 section_choisie = st.selectbox("Section cadastrale", section_codes)
@@ -162,14 +164,17 @@ parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 
+url_mutations = f"https://app.dvf.etalab.gouv.fr/api/parcelles2/{parcelle_choisie}/from=2020-01-01&to=2025-12-31"
+st.caption(f"🔗 URL mutations : {url_mutations}")
+
 parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st_folium(m, width=700, height=500)
 
-print(f"📍 Chargement des mutations pour {parcelle_choisie}")
 mutations = get_mutations(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
+# 🎛️ Filtres DVF
 st.subheader("Filtres DVF")
 if df_mutations.empty:
     st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
@@ -206,7 +211,7 @@ else:
     else:
         st.info("Aucune mutation ne correspond aux filtres sélectionnés.")
 
-# 📦 Export PDF
+# 📄 Export PDF
 st.subheader("Export PDF de la tournée")
 if st.button("Générer PDF"):
     generer_pdf(df)
