@@ -48,7 +48,7 @@ def get_parcelles_geojson(code_commune):
     except:
         return []
 
-@cache_data
+@cache_data(ttl=86400)
 def get_mutations_by_id_parcelle(id_parcelle):
     url = f"{BASE_DVF}/api/parcelles2/{id_parcelle}/from=2020-01-01&to=2025-12-31"
     try:
