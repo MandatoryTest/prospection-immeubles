@@ -2,6 +2,7 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import uuid
+import time
 from prospection import ajouter_entree, charger_donnees
 from dvf_cached import get_communes, get_sections, get_parcelles, get_mutations
 from map import generer_carte_complete
@@ -9,6 +10,7 @@ from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
 from st_aggrid import AgGrid, GridOptionsBuilder
+from dvf import normaliser_mutations
 
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
@@ -141,13 +143,17 @@ st.plotly_chart(graphique_interet(df))
 
 # 🗺️ Carte DVF
 st.subheader("Carte DVF : mutations par parcelle")
+print("📍 Chargement des communes...")
 communes = get_communes("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
 commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
+t0 = time.time()
 sections = get_sections(code_commune)
+print(f"⏱️ get_sections exécuté en {time.time() - t0:.2f} sec")
+
 parcelles = get_parcelles(code_commune)
 section_codes = [s["properties"]["code"] for s in sections]
 section_choisie = st.selectbox("Section cadastrale", section_codes)
@@ -160,6 +166,7 @@ parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st_folium(m, width=700, height=500)
 
+print(f"📍 Chargement des mutations pour {parcelle_choisie}")
 mutations = get_mutations(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 

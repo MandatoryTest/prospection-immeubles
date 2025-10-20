@@ -31,6 +31,7 @@ def get_sections(code_commune):
         r = requests.get(url, timeout=5)
         data = r.json() if r.status_code == 200 else {}
         features = data.get("features", [])
+        print(f"✅ get_sections({code_commune}) → {len(features)} sections")
         return features if isinstance(features, list) else []
     except Exception as e:
         print(f"⚠️ Erreur get_sections: {e}")
@@ -42,6 +43,7 @@ def get_parcelles_geojson(code_commune):
         r = requests.get(url, timeout=5)
         data = r.json() if r.status_code == 200 else {}
         features = data.get("features", [])
+        print(f"✅ get_parcelles_geojson({code_commune}) → {len(features)} parcelles")
         return features if isinstance(features, list) else []
     except Exception as e:
         print(f"⚠️ Erreur get_parcelles_geojson: {e}")
@@ -51,7 +53,9 @@ def get_mutations_by_id_parcelle(id_parcelle):
     url = f"{BASE_DVF}/api/parcelles2/{id_parcelle}/from=2020-01-01&to=2025-12-31"
     try:
         r = requests.get(url, timeout=5)
-        return r.json().get("mutations", []) if r.status_code == 200 else []
+        mutations = r.json().get("mutations", []) if r.status_code == 200 else []
+        print(f"✅ get_mutations_by_id_parcelle({id_parcelle}) → {len(mutations)} mutations")
+        return mutations
     except Exception as e:
         print(f"⚠️ Erreur get_mutations_by_id_parcelle: {e}")
         return []
@@ -107,4 +111,5 @@ def normaliser_mutations(mutations):
     ]
     df = df[colonnes]
     df = df.sort_values("Date mutation", ascending=False)
+    print(f"📊 normaliser_mutations → {df.shape[0]} lignes")
     return df

@@ -11,3 +11,4 @@ def generer_pdf(df, filename="fiche_tournee.pdf"):
         pdf.cell(200, 10, txt=ligne, ln=True)
 
     pdf.output(filename)
+    print(f"📄 PDF généré : {filename}")
