@@ -97,27 +97,6 @@ parcelle_ids = [p["id"] for p in parcelles_section]
 if "parcelle_selectionnee" not in st.session_state:
     st.session_state.parcelle_selectionnee = parcelle_ids[0]
 
-# 🔄 Mise à jour si clic
-def afficher_carte():
-    parcelles_mutées = {st.session_state.parcelle_selectionnee}
-    return st_folium(
-        generer_carte_complete(sections, parcelles_section, [], parcelles_mutées),
-        width=700,
-        height=500,
-        returned_objects=["last_active_drawing"]
-    )
-
-# 🗺️ Carte initiale
-carte_retour = afficher_carte()
-
-# 🔄 Mise à jour si clic
-if carte_retour and "last_active_drawing" in carte_retour:
-    clicked = carte_retour["last_active_drawing"]
-    if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
-        st.session_state.parcelle_selectionnee = clicked["id"]
-        st.info(f"📍 Parcelle sélectionnée sur la carte : {clicked['id']}")
-        carte_retour = afficher_carte()  # 🔁 Recharger la carte immédiatement
-
 # 📦 Sélecteur synchronisé
 parcelle_choisie = st.selectbox(
     "📦 Parcelle",
@@ -126,8 +105,21 @@ parcelle_choisie = st.selectbox(
     key="parcelle_selectionnee"
 )
 
+# 🗺️ Carte avec surbrillance
+parcelles_mutées = {st.session_state.parcelle_selectionnee}
+m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
+st.subheader("🗺️ Carte des mutations DVF")
+carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
+
+# 🔄 Mise à jour si clic
+if carte_retour and "last_active_drawing" in carte_retour:
+    clicked = carte_retour["last_active_drawing"]
+    if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
+        st.session_state.parcelle_selectionnee = clicked["id"]
+        st.rerun()  # 🔁 Recharger pour refléter immédiatement la sélection
+
 # 📑 Mutations DVF pour la parcelle sélectionnée
-mutations = get_mutations_by_id_parcelle(parcelle_choisie)
+mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_selectionnee)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
 # 📑 Affichage des mutations
