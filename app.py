@@ -3,13 +3,7 @@ from datetime import datetime
 import pandas as pd
 import uuid
 from prospection import ajouter_entree, charger_donnees
-from dvf import (
-    get_communes_du_departement,
-    get_sections,
-    get_parcelles_geojson,
-    get_mutations_by_id_parcelle,
-    normaliser_mutations
-)
+from dvf_cached import get_communes, get_sections, get_parcelles, get_mutations
 from map import generer_carte_complete
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
@@ -147,14 +141,14 @@ st.plotly_chart(graphique_interet(df))
 
 # 🗺️ Carte DVF
 st.subheader("Carte DVF : mutations par parcelle")
-communes = get_communes_du_departement("69")
+communes = get_communes("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
 commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
 sections = get_sections(code_commune)
-parcelles = get_parcelles_geojson(code_commune)
+parcelles = get_parcelles(code_commune)
 section_codes = [s["properties"]["code"] for s in sections]
 section_choisie = st.selectbox("Section cadastrale", section_codes)
 code_section = section_choisie.zfill(5)
@@ -166,7 +160,7 @@ parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st_folium(m, width=700, height=500)
 
-mutations = get_mutations_by_id_parcelle(parcelle_choisie)
+mutations = get_mutations(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
 st.subheader("Filtres DVF")
