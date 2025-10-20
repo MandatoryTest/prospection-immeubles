@@ -19,7 +19,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
 
-# 📋 Saisie d'un contact immeuble
+# 📋 Ajout de contact
 with st.form("ajout_contact"):
     st.subheader("Ajouter un contact immeuble")
     col1, col2 = st.columns(2)
@@ -55,10 +55,9 @@ with st.form("ajout_contact"):
         ajouter_entree(data)
         st.success(f"✅ Contact {nom} ajouté.")
 
-# 📌 Suivi des immeubles avec colonne Actions
+# 📌 Tableau interactif
 st.subheader("Suivi des immeubles")
 df = charger_donnees()
-
 filtre = st.selectbox("Filtrer par immeuble", ["Tous"] + sorted(df["Immeuble"].unique()))
 if filtre != "Tous":
     df = df[df["Immeuble"] == filtre]
@@ -74,7 +73,6 @@ else:
     gb.configure_selection("single", use_checkbox=True)
     grid_options = gb.build()
 
-    st.markdown("### 📋 Tableau de prospection")
     grid_response = AgGrid(
         df_actions,
         gridOptions=grid_options,
@@ -84,11 +82,10 @@ else:
     )
 
     selected = grid_response["selected_rows"]
-    if selected:
+    if len(selected) > 0:
         selected_id = selected[0]["ID"]
         selected_row = df[df["ID"] == selected_id].iloc[0]
 
-        st.markdown("### ✏️ Modifier ou supprimer le contact sélectionné")
         with st.form("modifier_contact"):
             col1, col2 = st.columns(2)
             with col1:
@@ -135,7 +132,7 @@ else:
                 st.success("❌ Contact supprimé.")
                 st.experimental_rerun()
 
-# 🔔 Relances à venir
+# 🔔 Relances
 st.subheader("Relances à venir")
 aujourd_hui = datetime.today().strftime("%Y-%m-%d")
 relances = df[df["Relance"] >= aujourd_hui]
@@ -150,33 +147,27 @@ st.metric("Intéressés", interet)
 st.metric("Taux de conversion", f"{taux}%")
 st.plotly_chart(graphique_interet(df))
 
-# 🔎 Carte DVF : mutations uniquement
+# 🗺️ Carte DVF
 st.subheader("Carte DVF : mutations par parcelle")
-
 communes = get_communes_du_departement("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
-commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
-commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
+commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()))
 code_commune = commune_nom_to_code[commune_choisie]
 
 sections = get_sections(code_commune)
 parcelles = get_parcelles_geojson(code_commune)
-
 section_codes = [s["properties"]["code"] for s in sections]
 section_choisie = st.selectbox("Section cadastrale", section_codes)
 code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
-
 parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 
-# 🗺️ Carte passive avec surbrillance
 parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
-st.subheader("🗺️ Carte des mutations DVF")
 st_folium(m, width=700, height=500)
 
-# 📑 Mutations DVF pour la parcelle sélectionnée
+# 📑 Mutations DVF
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
@@ -186,7 +177,6 @@ if df_mutations.empty:
 else:
     types = sorted(df_mutations["Type local"].dropna().unique())
     type_filtre = st.multiselect("Type de bien", types, default=types)
-
     date_min_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).min().date()
     date_max_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).max().date()
     date_min = st.date_input("Date min", value=date_min_raw)
