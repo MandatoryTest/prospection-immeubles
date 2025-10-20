@@ -97,23 +97,18 @@ parcelle_ids = [p["id"] for p in parcelles_section]
 if "parcelle_selectionnee" not in st.session_state:
     st.session_state.parcelle_selectionnee = parcelle_ids[0]
 
-# 🗺️ Carte avec surbrillance
-mutation_points = []
-parcelles_mutées = set()
-mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_selectionnee)
-for m in mutations:
-    for i in m.get("infos", []):
-        mutation_points.append({
-            "latitude": i.get("latitude"),
-            "longitude": i.get("longitude"),
-            "valeur_fonciere": i.get("valeur_fonciere"),
-            "type_local": i.get("type_local")
-        })
-        parcelles_mutées.add(st.session_state.parcelle_selectionnee)
+# 🔄 Mise à jour si clic
+def afficher_carte():
+    parcelles_mutées = {st.session_state.parcelle_selectionnee}
+    return st_folium(
+        generer_carte_complete(sections, parcelles_section, [], parcelles_mutées),
+        width=700,
+        height=500,
+        returned_objects=["last_active_drawing"]
+    )
 
-m = generer_carte_complete(sections, parcelles_section, mutation_points, parcelles_mutées)
-st.subheader("🗺️ Carte des mutations DVF")
-carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
+# 🗺️ Carte initiale
+carte_retour = afficher_carte()
 
 # 🔄 Mise à jour si clic
 if carte_retour and "last_active_drawing" in carte_retour:
@@ -121,6 +116,7 @@ if carte_retour and "last_active_drawing" in carte_retour:
     if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
         st.session_state.parcelle_selectionnee = clicked["id"]
         st.info(f"📍 Parcelle sélectionnée sur la carte : {clicked['id']}")
+        carte_retour = afficher_carte()  # 🔁 Recharger la carte immédiatement
 
 # 📦 Sélecteur synchronisé
 parcelle_choisie = st.selectbox(
