@@ -7,8 +7,8 @@ from dvf import (
 )
 
 @cache_data
-def get_communes(departement):
-    return get_communes_du_departement(departement)
+def get_communes(code_departement):
+    return get_communes_du_departement(code_departement)
 
 @cache_data
 def get_sections(code_commune):
