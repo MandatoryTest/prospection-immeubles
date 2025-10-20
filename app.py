@@ -96,11 +96,11 @@ parcelle_ids = [p["id"] for p in parcelles_section]
 # 📦 Sélecteur de parcelle
 parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 
-# 🗺️ Carte avec surbrillance (aucun clic intercepté)
+# 🗺️ Carte passive avec surbrillance
 parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st.subheader("🗺️ Carte des mutations DVF")
-st_folium(m, width=700, height=500)  # ❌ Pas de returned_objects
+st_folium(m, width=700, height=500)  # Carte passive, aucun événement intercepté
 
 # 📑 Mutations DVF pour la parcelle sélectionnée
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
