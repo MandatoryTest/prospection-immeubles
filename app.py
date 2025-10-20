@@ -14,7 +14,7 @@ from map import generer_carte_complete
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
@@ -76,13 +76,13 @@ else:
     grid_response = AgGrid(
         df_actions,
         gridOptions=grid_options,
-        update_mode=GridUpdateMode.SELECTION_CHANGED,
+        update_on="selection_changed",
         height=400,
         fit_columns_on_grid_load=True
     )
 
-    selected = grid_response["selected_rows"]
-    if len(selected) > 0:
+    selected = grid_response.get("selected_rows", [])
+    if selected:
         selected_id = selected[0]["ID"]
         selected_row = df[df["ID"] == selected_id].iloc[0]
 
@@ -151,7 +151,8 @@ st.plotly_chart(graphique_interet(df))
 st.subheader("Carte DVF : mutations par parcelle")
 communes = get_communes_du_departement("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
-commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()))
+commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
+commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
 sections = get_sections(code_commune)
@@ -167,7 +168,6 @@ parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st_folium(m, width=700, height=500)
 
-# 📑 Mutations DVF
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
