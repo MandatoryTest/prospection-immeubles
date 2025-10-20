@@ -29,7 +29,7 @@ def generer_carte_complete(sections, parcelles, mutation_points, parcelles_muté
             tooltip=s["properties"].get("code", "")
         ).add_to(m)
 
-    # 🟩 / 🟥 Parcelles cliquables
+    # 🟩 / 🟥 Parcelles cliquables sans popup
     parcelles_mutées = parcelles_mutées or set()
     for p in parcelles:
         pid = p["id"]
@@ -39,23 +39,8 @@ def generer_carte_complete(sections, parcelles, mutation_points, parcelles_muté
             name="Parcelles",
             style_function=lambda x, c=color: {"color": c, "weight": 1, "fillOpacity": 0.2},
             tooltip=pid,
-            popup=folium.Popup(pid, parse_html=True)
+            highlight_function=lambda x: {"weight": 3, "color": "orange"}
         ).add_to(m)
-
-    # 🔴 Mutations
-    for pt in mutation_points:
-        lat = pt.get("latitude")
-        lon = pt.get("longitude")
-        popup = f"{format_valeur(pt.get('valeur_fonciere'))} - {pt.get('type_local', '')}"
-        if lat and lon:
-            folium.CircleMarker(
-                location=[float(lat), float(lon)],
-                radius=6,
-                color="red",
-                fill=True,
-                fill_opacity=0.7,
-                popup=popup
-            ).add_to(m)
 
     folium.LayerControl().add_to(m)
     return m
