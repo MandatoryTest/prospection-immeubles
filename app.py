@@ -93,38 +93,17 @@ code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
-# 🧠 Initialisation de la sélection
-if "parcelle_selectionnee" not in st.session_state:
-    st.session_state.parcelle_selectionnee = parcelle_ids[0]
-
-# 📦 Sélecteur synchronisé (clé différente)
-parcelle_choisie = st.selectbox(
-    "📦 Parcelle",
-    parcelle_ids,
-    index=parcelle_ids.index(st.session_state.parcelle_selectionnee),
-    key="parcelle_widget"
-)
-
-# 🔄 Synchronisation manuelle
-if parcelle_choisie != st.session_state.parcelle_selectionnee:
-    st.session_state.parcelle_selectionnee = parcelle_choisie
+# 📦 Sélecteur de parcelle
+parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 
 # 🗺️ Carte avec surbrillance
-parcelles_mutées = {st.session_state.parcelle_selectionnee}
+parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st.subheader("🗺️ Carte des mutations DVF")
-carte_retour = st_folium(m, width=700, height=500, returned_objects=["last_active_drawing"])
-
-# 🔄 Mise à jour si clic
-if carte_retour and "last_active_drawing" in carte_retour:
-    clicked = carte_retour["last_active_drawing"]
-    if clicked and "id" in clicked and clicked["id"] in parcelle_ids:
-        if clicked["id"] != st.session_state.parcelle_selectionnee:
-            st.session_state.parcelle_selectionnee = clicked["id"]
-            st.experimental_rerun()
+st_folium(m, width=700, height=500)
 
 # 📑 Mutations DVF pour la parcelle sélectionnée
-mutations = get_mutations_by_id_parcelle(st.session_state.parcelle_selectionnee)
+mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
 # 📑 Affichage des mutations
