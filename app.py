@@ -86,7 +86,7 @@ else:
         selected_id = selected[0]["ID"]
         selected_row = df[df["ID"] == selected_id].iloc[0]
 
-        with st.form("modifier_contact"):
+        with st.form(key=f"form_{selected_id}"):
             col1, col2 = st.columns(2)
             with col1:
                 immeuble = st.text_input("Immeuble", value=selected_row["Immeuble"])
@@ -102,10 +102,8 @@ else:
                 commentaire = st.text_area("Commentaire", value=selected_row["Commentaire"])
 
             col_modif, col_suppr = st.columns(2)
-            with col_modif:
-                modif = st.form_submit_button("💾 Enregistrer les modifications")
-            with col_suppr:
-                suppr = st.form_submit_button("🗑️ Supprimer ce contact")
+            modif = col_modif.form_submit_button("💾 Enregistrer les modifications")
+            suppr = col_suppr.form_submit_button("🗑️ Supprimer ce contact")
 
             if modif:
                 df.loc[df["ID"] == selected_id, :] = {
@@ -212,3 +210,8 @@ st.subheader("Export PDF de la tournée")
 if st.button("Générer PDF"):
     generer_pdf(df)
     st.success("📄 PDF généré : fiche_tournee.pdf")
+    try:
+        with open("fiche_tournee.pdf", "rb") as f:
+            st.download_button("📥 Télécharger le PDF", f, file_name="fiche_tournee.pdf")
+    except FileNotFoundError:
+        st.error("Le fichier PDF n'a pas pu être généré.")
