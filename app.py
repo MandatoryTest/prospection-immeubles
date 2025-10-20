@@ -19,18 +19,18 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
 
-def detect_parcelle_cliquée(result, parcelle_actuelle):
+def detect_parcelle_cliquee(result):
     if result and "last_object_clicked" in result:
         clicked = result["last_object_clicked"]
         if clicked and "id" in clicked:
             return clicked["id"]
-    return parcelle_actuelle
+    return None
 
-# Initialisation session_state
+# Initialisation de la parcelle choisie dans session_state
 if "parcelle_choisie" not in st.session_state:
-    st.session_state["parcelle_choisie"] = None
+    st.session_state.parcelle_choisie = None
 
-# 📋 Ajout de contact
+# 📋 Ajout de contact (inchangé)
 with st.form("ajout_contact"):
     st.subheader("Ajouter un contact immeuble")
     col1, col2 = st.columns(2)
@@ -66,7 +66,7 @@ with st.form("ajout_contact"):
         ajouter_entree(data)
         st.success(f"✅ Contact {nom} ajouté.")
 
-# 📌 Tableau interactif
+# 📌 Tableau interactif (inchangé)
 st.subheader("Suivi des immeubles")
 df = charger_donnees()
 filtre = st.selectbox("Filtrer par immeuble", ["Tous"] + sorted(df["Immeuble"].unique()))
@@ -133,21 +133,21 @@ else:
                 }
                 df.to_csv("prospection.csv", index=False)
                 st.success("✅ Modifications enregistrées.")
-                st.rerun()
+                st.experimental_rerun()
 
             if suppr:
                 df = df[df["ID"] != selected_id]
                 df.to_csv("prospection.csv", index=False)
                 st.success("❌ Contact supprimé.")
-                st.rerun()
+                st.experimental_rerun()
 
-# 🔔 Relances
+# 🔔 Relances (inchangé)
 st.subheader("Relances à venir")
 aujourd_hui = datetime.today().strftime("%Y-%m-%d")
 relances = df[df["Relance"] >= aujourd_hui]
 st.dataframe(relances)
 
-# 📊 Statistiques
+# 📊 Statistiques (inchangé)
 st.subheader("Statistiques de prospection")
 total, contactes, interet, taux = stats_prospection(df)
 st.metric("Total entrées", total)
@@ -156,7 +156,7 @@ st.metric("Intéressés", interet)
 st.metric("Taux de conversion", f"{taux}%")
 st.plotly_chart(graphique_interet(df))
 
-# 🗺️ Carte DVF
+# 🗺️ Carte DVF avec gestion du clic et mise à jour du selectbox
 st.subheader("Carte DVF : mutations par parcelle")
 
 communes = get_communes_du_departement("69")
@@ -173,25 +173,29 @@ code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
-if st.session_state["parcelle_choisie"] not in parcelle_ids:
-    st.session_state["parcelle_choisie"] = parcelle_ids[0] if parcelle_ids else None
+# Initialisation ou correction de la parcelle choisie dans session_state
+if st.session_state.parcelle_choisie not in parcelle_ids:
+    st.session_state.parcelle_choisie = parcelle_ids[0] if parcelle_ids else None
 
-parcelles_mutées = {st.session_state["parcelle_choisie"]}
-m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
-result = st_folium(m, width=700, height=500)
-
-nouvelle_parcelle = detect_parcelle_cliquée(result, st.session_state["parcelle_choisie"])
-if nouvelle_parcelle != st.session_state["parcelle_choisie"]:
-    st.session_state["parcelle_choisie"] = nouvelle_parcelle
-    st.rerun()
-# Sélecteur synchronisé avec la carte
+# Selectbox lié à session_state
 parcelle_choisie = st.selectbox(
     "📦 Parcelle",
     parcelle_ids,
-    index=parcelle_ids.index(st.session_state["parcelle_choisie"]) if st.session_state["parcelle_choisie"] else 0
+    index=parcelle_ids.index(st.session_state.parcelle_choisie) if st.session_state.parcelle_choisie else 0
 )
 
-# 📄 Mutations DVF
+# Génération carte avec la parcelle sélectionnée mise en surbrillance
+parcelles_mutées = {parcelle_choisie} if parcelle_choisie else set()
+m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
+result = st_folium(m, width=700, height=500)
+
+# Détection clic sur la carte
+parcelle_cliquee = detect_parcelle_cliquee(result)
+if parcelle_cliquee and parcelle_cliquee in parcelle_ids and parcelle_cliquee != st.session_state.parcelle_choisie:
+    st.session_state.parcelle_choisie = parcelle_cliquee
+    st.experimental_rerun()
+
+# 📄 Mutations DVF (inchangé)
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
@@ -234,7 +238,7 @@ else:
     else:
         st.info("Aucune mutation ne correspond aux filtres sélectionnés.")
 
-# 📄 Export PDF
+# 📄 Export PDF (inchangé)
 st.subheader("Export PDF de la tournée")
 if st.button("Générer PDF"):
     generer_pdf(df)
