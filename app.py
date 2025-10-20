@@ -2,15 +2,19 @@ import streamlit as st
 from datetime import datetime
 import pandas as pd
 import uuid
-import time
 from prospection import ajouter_entree, charger_donnees
-from dvf_cached import get_communes, get_sections, get_parcelles, get_mutations
+from dvf import (
+    get_communes_du_departement,
+    get_sections,
+    get_parcelles_geojson,
+    get_mutations_by_id_parcelle,
+    normaliser_mutations
+)
 from map import generer_carte_complete
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
 from st_aggrid import AgGrid, GridOptionsBuilder
-from dvf import normaliser_mutations
 
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
@@ -144,7 +148,7 @@ st.plotly_chart(graphique_interet(df))
 # 🗺️ Carte DVF
 st.subheader("Carte DVF : mutations par parcelle")
 
-communes = get_communes("69")
+communes = get_communes_du_departement("69")
 commune_nom_to_code = {c["nom"]: c["code"] for c in communes}
 commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commune_nom_to_code else sorted(commune_nom_to_code.keys())[0]
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
@@ -156,7 +160,7 @@ st.caption(f"🔗 URL sections : {url_sections}")
 st.caption(f"🔗 URL parcelles : {url_parcelles}")
 
 sections = get_sections(code_commune)
-parcelles = get_parcelles(code_commune)
+parcelles = get_parcelles_geojson(code_commune)
 section_codes = [s["properties"]["code"] for s in sections]
 section_choisie = st.selectbox("Section cadastrale", section_codes)
 code_section = section_choisie.zfill(5)
@@ -171,7 +175,7 @@ parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st_folium(m, width=700, height=500)
 
-mutations = get_mutations(parcelle_choisie)
+mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
 # 🎛️ Filtres DVF
@@ -181,6 +185,7 @@ if df_mutations.empty:
 else:
     types = sorted(df_mutations["Type local"].dropna().unique())
     type_filtre = st.multiselect("Type de bien", types, default=types)
+
     date_min_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).min().date()
     date_max_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).max().date()
     date_min = st.date_input("Date min", value=date_min_raw)
@@ -194,14 +199,16 @@ else:
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
-    colonnes_droite = [col for col in [
+    colonnes_droite = [
         "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
         "Pièces", "Nombre de lots"
-    ] if col in df_filtré.columns]
-
-    colonnes_centre = [col for col in [
+    ]
+    colonnes_centre = [
         "Date mutation", "Nature mutation", "Code postal"
-    ] if col in df_filtré.columns]
+    ]
+
+    colonnes_droite = [col for col in colonnes_droite if col in df_filtré.columns]
+    colonnes_centre = [col for col in colonnes_centre if col in df_filtré.columns]
 
     if not df_filtré.empty:
         styler = df_filtré.style \

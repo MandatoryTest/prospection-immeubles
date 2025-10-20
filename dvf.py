@@ -7,6 +7,7 @@ BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
 def get_communes_du_departement(code_departement="69"):
     try:
         url = f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code"
+        print(f"📡 get_communes_du_departement → {url}")
         r1 = requests.get(url, timeout=5)
         communes = r1.json() if r1.status_code == 200 else []
 
@@ -24,42 +25,46 @@ def get_communes_du_departement(code_departement="69"):
 
         return sorted(communes, key=lambda c: c["nom"])
     except Exception as e:
-        print(f"⚠️ Erreur get_communes_du_departement: {e}")
+        print(f"❌ Erreur get_communes_du_departement: {e}")
         return []
 
 def get_sections(code_commune):
     url = f"{BASE_CADASTRE}/{code_commune}/geojson/sections"
+    print(f"📡 get_sections → {url}")
     try:
         r = requests.get(url, timeout=5)
+        print(f"📬 Statut : {r.status_code}")
         data = r.json() if r.status_code == 200 else {}
         features = data.get("features", [])
-        print(f"✅ get_sections → {url} → {len(features)} sections")
+        print(f"✅ Sections récupérées : {len(features)}")
         return features if isinstance(features, list) else []
     except Exception as e:
-        print(f"⚠️ Erreur get_sections: {e}")
+        print(f"❌ Erreur get_sections: {e}")
         return []
 
 def get_parcelles_geojson(code_commune):
     url = f"{BASE_CADASTRE}/{code_commune}/geojson/parcelles"
+    print(f"📡 get_parcelles_geojson → {url}")
     try:
         r = requests.get(url, timeout=5)
         data = r.json() if r.status_code == 200 else {}
         features = data.get("features", [])
-        print(f"✅ get_parcelles_geojson → {url} → {len(features)} parcelles")
+        print(f"✅ Parcelles récupérées : {len(features)}")
         return features if isinstance(features, list) else []
     except Exception as e:
-        print(f"⚠️ Erreur get_parcelles_geojson: {e}")
+        print(f"❌ Erreur get_parcelles_geojson: {e}")
         return []
 
 def get_mutations_by_id_parcelle(id_parcelle):
     url = f"{BASE_DVF}/api/parcelles2/{id_parcelle}/from=2020-01-01&to=2025-12-31"
+    print(f"📡 get_mutations_by_id_parcelle → {url}")
     try:
         r = requests.get(url, timeout=5)
         mutations = r.json().get("mutations", []) if r.status_code == 200 else []
-        print(f"✅ get_mutations_by_id_parcelle → {url} → {len(mutations)} mutations")
+        print(f"✅ Mutations récupérées : {len(mutations)}")
         return mutations
     except Exception as e:
-        print(f"⚠️ Erreur get_mutations_by_id_parcelle: {e}")
+        print(f"❌ Erreur get_mutations_by_id_parcelle: {e}")
         return []
 
 def safe_float(value):
