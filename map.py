@@ -2,20 +2,26 @@ import folium
 from folium import GeoJson, GeoJsonTooltip
 
 def generer_carte_complete(sections, parcelles, mutation_points, parcelles_mutées):
-    # 📍 Carte centrée sur Lyon (modifiable dynamiquement si besoin)
+    # 📍 Centrage dynamique sur la première parcelle
+    if parcelles:
+        coords = parcelles[0]["geometry"]["coordinates"][0][0]
+        lat, lon = coords[1], coords[0]
+    else:
+        lat, lon = 45.75, 4.85  # fallback Lyon
+
     m = folium.Map(
-        location=[45.75, 4.85],
-        zoom_start=15,
+        location=[lat, lon],
+        zoom_start=17,
         control_scale=False,
-        zoom_control=False,
-        dragging=False,
-        scrollWheelZoom=False,
-        doubleClickZoom=False,
-        boxZoom=False,
-        touchZoom=False
+        zoom_control=True,      # ✅ autorisé
+        dragging=False,         # ❌ désactivé
+        scrollWheelZoom=False,  # ❌ désactivé
+        doubleClickZoom=False,  # ❌ désactivé
+        boxZoom=False,          # ❌ désactivé
+        touchZoom=False         # ❌ désactivé
     )
 
-    # 🗂️ Ajout des sections
+    # 🗂️ Sections
     for section in sections:
         GeoJson(
             section,
@@ -27,7 +33,7 @@ def generer_carte_complete(sections, parcelles, mutation_points, parcelles_muté
             }
         ).add_to(m)
 
-    # 🧩 Ajout des parcelles
+    # 🧩 Parcelles
     for parcelle in parcelles:
         id_parcelle = parcelle["id"]
         surbrillance = id_parcelle in parcelles_mutées
