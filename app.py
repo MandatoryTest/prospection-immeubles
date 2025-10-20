@@ -168,16 +168,32 @@ section_choisie = st.selectbox("Section cadastrale", section_codes)
 code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
-parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 
-# 🖱️ Carte interactive avec clic
-parcelles_mutées = {parcelle_choisie}
+# Initialisation de la parcelle choisie dans st.session_state
+if "parcelle_choisie" not in st.session_state:
+    st.session_state["parcelle_choisie"] = parcelle_ids[0] if parcelle_ids else None
+
+# Selectbox synchronisé avec st.session_state
+parcelle_choisie = st.selectbox(
+    "📦 Parcelle",
+    parcelle_ids,
+    index=parcelle_ids.index(st.session_state["parcelle_choisie"]) if st.session_state["parcelle_choisie"] in parcelle_ids else 0,
+    key="parcelle_choisie"
+)
+
+# Carte interactive avec mise à jour de la sélection
+parcelles_mutées = {st.session_state["parcelle_choisie"]}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 result = st_folium(m, width=700, height=500)
-parcelle_choisie = detect_parcelle_cliquée(result, parcelle_choisie)
+
+# Détecter clic et mettre à jour la session si besoin
+parcelle_cliquée = detect_parcelle_cliquée(result, st.session_state["parcelle_choisie"])
+if parcelle_cliquée != st.session_state["parcelle_choisie"]:
+    st.session_state["parcelle_choisie"] = parcelle_cliquée
+    st.experimental_rerun()
 
 # 📄 Mutations DVF
-mutations = get_mutations_by_id_parcelle(parcelle_choisie)
+mutations = get_mutations_by_id_parcelle(st.session_state["parcelle_choisie"])
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
 st.subheader("Filtres DVF")
