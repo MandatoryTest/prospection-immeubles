@@ -19,6 +19,13 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
 
+def detect_parcelle_cliquée(result, parcelle_actuelle):
+    if result and "last_object_clicked" in result:
+        clicked = result["last_object_clicked"]
+        if clicked and "id" in clicked:
+            return clicked["id"]
+    return parcelle_actuelle
+
 # 📋 Ajout de contact
 with st.form("ajout_contact"):
     st.subheader("Ajouter un contact immeuble")
@@ -167,11 +174,7 @@ parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 result = st_folium(m, width=700, height=500)
-
-if result and "last_object_clicked" in result:
-    clicked = result["last_object_clicked"]
-    if clicked and "id" in clicked:
-        parcelle_choisie = clicked["id"]
+parcelle_choisie = detect_parcelle_cliquée(result, parcelle_choisie)
 
 # 📄 Mutations DVF
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
@@ -183,6 +186,7 @@ if df_mutations.empty:
 else:
     types = sorted(df_mutations["Type local"].dropna().unique())
     type_filtre = st.multiselect("Type de bien", types, default=types)
+
     date_min_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).min().date()
     date_max_raw = pd.to_datetime(df_mutations["Date mutation"], dayfirst=True).max().date()
     date_min = st.date_input("Date min", value=date_min_raw)
