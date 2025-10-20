@@ -1,9 +1,11 @@
 import requests
 import pandas as pd
+from streamlit import cache_data
 
 BASE_DVF = "https://app.dvf.etalab.gouv.fr"
 BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
 
+@cache_data
 def get_communes_du_departement(code_departement="69"):
     try:
         url = f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code"
@@ -28,6 +30,7 @@ def get_communes_du_departement(code_departement="69"):
         print(f"❌ Erreur get_communes_du_departement: {e}")
         return []
 
+@cache_data
 def get_sections(code_commune):
     url = f"{BASE_CADASTRE}/{code_commune}/geojson/sections"
     print(f"📡 get_sections → {url}")
@@ -42,6 +45,7 @@ def get_sections(code_commune):
         print(f"❌ Erreur get_sections: {e}")
         return []
 
+@cache_data
 def get_parcelles_geojson(code_commune):
     url = f"{BASE_CADASTRE}/{code_commune}/geojson/parcelles"
     print(f"📡 get_parcelles_geojson → {url}")
@@ -55,6 +59,7 @@ def get_parcelles_geojson(code_commune):
         print(f"❌ Erreur get_parcelles_geojson: {e}")
         return []
 
+@cache_data
 def get_mutations_by_id_parcelle(id_parcelle):
     url = f"{BASE_DVF}/api/parcelles2/{id_parcelle}/from=2020-01-01&to=2025-12-31"
     print(f"📡 get_mutations_by_id_parcelle → {url}")
