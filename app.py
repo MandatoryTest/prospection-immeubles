@@ -183,8 +183,13 @@ parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
 # Initialisation
-if st.session_state["parcelle_choisie"] not in parcelle_ids:
-    st.session_state["parcelle_choisie"] = parcelle_ids[0]
+if parcelle_ids:
+    if st.session_state["parcelle_choisie"] not in parcelle_ids:
+        st.session_state["parcelle_choisie"] = parcelle_ids[0]
+else:
+    st.warning("❌ Aucune parcelle trouvée pour cette section.")
+    st.stop()
+
 
 # Carte
 parcelles_mutées = {st.session_state["parcelle_choisie"]}
