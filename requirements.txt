@@ -3,5 +3,5 @@ pandas
 streamlit-folium
 folium
 streamlit-aggrid
-uuid
+fpdf
 plotly
