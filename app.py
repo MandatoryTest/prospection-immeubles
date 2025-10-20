@@ -153,10 +153,10 @@ st_folium(m, width=700, height=500)
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
+st.subheader("Filtres DVF")
 if df_mutations.empty:
     st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
 else:
-    st.subheader("Filtres DVF")
     types = sorted(df_mutations["Type local"].dropna().unique())
     type_filtre = st.multiselect("Type de bien", types, default=types)
 
@@ -173,3 +173,27 @@ else:
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
+    # ✅ Sécurisation des colonnes pour le style
+    colonnes_droite = [col for col in [
+        "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
+        "Pièces", "Nombre de lots"
+    ] if col in df_filtré.columns]
+
+    colonnes_centre = [col for col in [
+        "Date mutation", "Nature mutation", "Code postal"
+    ] if col in df_filtré.columns]
+
+    # ✅ Affichage du tableau filtré
+    if not df_filtré.empty:
+        styler = df_filtré.style \
+            .set_properties(**{"text-align": "right"}, subset=colonnes_droite) \
+            .set_properties(**{"text-align": "center"}, subset=colonnes_centre)
+        st.dataframe(styler)
+    else:
+        st.info("Aucune mutation ne correspond aux filtres sélectionnés.")
+
+# 📦 Export PDF
+st.subheader("Export PDF de la tournée")
+if st.button("Générer PDF"):
+    generer_pdf(df)
+    st.success("📄 PDF généré : fiche_tournee.pdf")
