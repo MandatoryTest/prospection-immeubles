@@ -154,11 +154,6 @@ commune_default = "Lyon 3e Arrondissement" if "Lyon 3e Arrondissement" in commun
 commune_choisie = st.selectbox("Commune", sorted(commune_nom_to_code.keys()), index=sorted(commune_nom_to_code.keys()).index(commune_default))
 code_commune = commune_nom_to_code[commune_choisie]
 
-url_sections = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code_commune}/geojson/sections"
-url_parcelles = f"https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes/{code_commune}/geojson/parcelles"
-st.caption(f"🔗 URL sections : {url_sections}")
-st.caption(f"🔗 URL parcelles : {url_parcelles}")
-
 sections = get_sections(code_commune)
 parcelles = get_parcelles_geojson(code_commune)
 section_codes = [s["properties"]["code"] for s in sections]
@@ -167,9 +162,6 @@ code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
-
-url_mutations = f"https://app.dvf.etalab.gouv.fr/api/parcelles2/{parcelle_choisie}/from=2020-01-01&to=2025-12-31"
-st.caption(f"🔗 URL mutations : {url_mutations}")
 
 parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
