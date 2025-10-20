@@ -173,61 +173,6 @@ code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
-
-st.subheader("🧪 Test carte DVF interactive")
-
-from dvf import get_sections, get_parcelles_geojson, get_mutations_by_id_parcelle, normaliser_mutations
-from map import generer_carte_complete
-from streamlit_folium import st_folium
-
-# Initialisation session_state
-if "parcelle_choisie" not in st.session_state:
-    st.session_state["parcelle_choisie"] = None
-
-def detect_parcelle_cliquée(result, parcelle_actuelle):
-    if result and "last_object_clicked" in result:
-        clicked = result["last_object_clicked"]
-        if clicked and "id" in clicked:
-            return clicked["id"]
-    return parcelle_actuelle
-
-# Commune fixe pour test
-code_commune = "69383"  # Lyon 3e
-sections = get_sections(code_commune)
-parcelles = get_parcelles_geojson(code_commune)
-section_codes = [s["properties"]["code"] for s in sections]
-code_section = section_codes[0]
-parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
-parcelle_ids = [p["id"] for p in parcelles_section]
-
-# Initialisation
-if parcelle_ids:
-    if st.session_state["parcelle_choisie"] not in parcelle_ids:
-        st.session_state["parcelle_choisie"] = parcelle_ids[0]
-else:
-    st.warning("❌ Aucune parcelle trouvée pour cette section.")
-    st.stop()
-
-
-# Carte
-parcelles_mutées = {st.session_state["parcelle_choisie"]}
-m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
-result = st_folium(m, width=700, height=500)
-
-# Clic
-nouvelle_parcelle = detect_parcelle_cliquée(result, st.session_state["parcelle_choisie"])
-if nouvelle_parcelle != st.session_state["parcelle_choisie"]:
-    st.session_state["parcelle_choisie"] = nouvelle_parcelle
-    st.rerun()
-
-# Affichage
-st.write("📦 Parcelle sélectionnée :", st.session_state["parcelle_choisie"])
-
-mutations = get_mutations_by_id_parcelle(st.session_state["parcelle_choisie"])
-df = normaliser_mutations(mutations)
-st.dataframe(df)
-
-
 if st.session_state["parcelle_choisie"] not in parcelle_ids:
     st.session_state["parcelle_choisie"] = parcelle_ids[0] if parcelle_ids else None
 
