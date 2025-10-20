@@ -1,6 +1,7 @@
 import streamlit as st
 from datetime import datetime
 import pandas as pd
+import uuid
 from prospection import ajouter_entree, charger_donnees
 from dvf import (
     get_communes_du_departement,
@@ -47,18 +48,65 @@ with st.form("ajout_contact"):
             "Intérêt": interet,
             "Action": action,
             "Relance": relance.strftime("%Y-%m-%d") if relance else "",
-            "Commentaire": commentaire
+            "Commentaire": commentaire,
+            "ID": str(uuid.uuid4())
         }
         ajouter_entree(data)
         st.success(f"✅ Contact {nom} ajouté.")
 
-# 📌 Suivi des immeubles
+# 📌 Suivi des immeubles avec édition/suppression
 st.subheader("Suivi des immeubles")
 df = charger_donnees()
+
 filtre = st.selectbox("Filtrer par immeuble", ["Tous"] + sorted(df["Immeuble"].unique()))
 if filtre != "Tous":
     df = df[df["Immeuble"] == filtre]
+
 st.dataframe(df)
+
+if not df.empty and "ID" in df.columns:
+    selected_id = st.selectbox("Sélectionner un contact à modifier ou supprimer", df["ID"])
+    selected_row = df[df["ID"] == selected_id].iloc[0]
+
+    st.markdown("### ✏️ Modifier le contact")
+    with st.form("modifier_contact"):
+        col1, col2 = st.columns(2)
+        with col1:
+            immeuble = st.text_input("Immeuble", value=selected_row["Immeuble"])
+            adresse = st.text_input("Adresse", value=selected_row["Adresse"])
+            etage = st.text_input("Étage", value=selected_row["Étage"])
+            nom = st.text_input("Nom affiché", value=selected_row["Nom affiché"])
+            type_bien = st.selectbox("Type de bien", ["T1", "T2", "T3", "Maison", "Inconnu"], index=["T1", "T2", "T3", "Maison", "Inconnu"].index(selected_row["Type de bien"]))
+        with col2:
+            contacte = st.radio("Contacté ?", ["Oui", "Non"], index=["Oui", "Non"].index(selected_row["Contacté ?"]))
+            interet = st.selectbox("Intérêt", ["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"], index=["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"].index(selected_row["Intérêt"]))
+            action = st.text_input("Action à suivre", value=selected_row["Action"])
+            relance = st.date_input("Date de relance", value=pd.to_datetime(selected_row["Relance"]) if selected_row["Relance"] else None)
+            commentaire = st.text_area("Commentaire", value=selected_row["Commentaire"])
+
+        modif = st.form_submit_button("💾 Enregistrer les modifications")
+        if modif:
+            df.loc[df["ID"] == selected_id, :] = {
+                "Date": selected_row["Date"],
+                "Immeuble": immeuble,
+                "Adresse": adresse,
+                "Étage": etage,
+                "Nom affiché": nom,
+                "Type de bien": type_bien,
+                "Contacté ?": contacte,
+                "Intérêt": interet,
+                "Action": action,
+                "Relance": relance.strftime("%Y-%m-%d") if relance else "",
+                "Commentaire": commentaire,
+                "ID": selected_id
+            }
+            df.to_csv("prospection.csv", index=False)
+            st.success("✅ Modifications enregistrées.")
+
+    if st.button("🗑️ Supprimer ce contact"):
+        df = df[df["ID"] != selected_id]
+        df.to_csv("prospection.csv", index=False)
+        st.success("❌ Contact supprimé.")
 
 # 🔔 Relances à venir
 st.subheader("Relances à venir")
@@ -93,20 +141,18 @@ code_section = section_choisie.zfill(5)
 parcelles_section = [p for p in parcelles if p["id"][5:10] == code_section]
 parcelle_ids = [p["id"] for p in parcelles_section]
 
-# 📦 Sélecteur de parcelle
 parcelle_choisie = st.selectbox("📦 Parcelle", parcelle_ids)
 
 # 🗺️ Carte passive avec surbrillance
 parcelles_mutées = {parcelle_choisie}
 m = generer_carte_complete(sections, parcelles_section, [], parcelles_mutées)
 st.subheader("🗺️ Carte des mutations DVF")
-st_folium(m, width=700, height=500)  # Carte passive, aucun événement intercepté
+st_folium(m, width=700, height=500)
 
 # 📑 Mutations DVF pour la parcelle sélectionnée
 mutations = get_mutations_by_id_parcelle(parcelle_choisie)
 df_mutations = normaliser_mutations(mutations) if mutations else pd.DataFrame()
 
-# 📑 Affichage des mutations
 if df_mutations.empty:
     st.warning("❌ Aucune mutation DVF trouvée pour cette parcelle.")
 else:
@@ -127,20 +173,3 @@ else:
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
-    colonnes_droite = [
-        "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
-        "Pièces", "Nombre de lots"
-    ]
-    colonnes_centre = ["Date mutation", "Nature mutation", "Code postal"]
-
-    styler = df_filtré.style \
-        .set_properties(**{"text-align": "right"}, subset=colonnes_droite) \
-        .set_properties(**{"text-align": "center"}, subset=colonnes_centre)
-
-    st.dataframe(styler)
-
-# 📦 Export PDF
-st.subheader("Export PDF de la tournée")
-if st.button("Générer PDF"):
-    generer_pdf(df)
-    st.success("📄 PDF généré : fiche_tournee.pdf")
