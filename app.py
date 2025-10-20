@@ -14,6 +14,7 @@ from map import generer_carte_complete
 from stats import stats_prospection, graphique_interet
 from export import generer_pdf
 from streamlit_folium import st_folium
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
 st.set_page_config(page_title="Prospection immobilière", layout="wide")
 st.title("🏢 Prospection immobilière + DVF")
@@ -54,7 +55,7 @@ with st.form("ajout_contact"):
         ajouter_entree(data)
         st.success(f"✅ Contact {nom} ajouté.")
 
-# 📌 Suivi des immeubles avec édition/suppression
+# 📌 Suivi des immeubles avec colonne Actions
 st.subheader("Suivi des immeubles")
 df = charger_donnees()
 
@@ -62,51 +63,77 @@ filtre = st.selectbox("Filtrer par immeuble", ["Tous"] + sorted(df["Immeuble"].u
 if filtre != "Tous":
     df = df[df["Immeuble"] == filtre]
 
-st.dataframe(df)
+if df.empty:
+    st.info("Aucune entrée trouvée.")
+else:
+    df_actions = df.copy()
+    df_actions["Actions"] = ["✏️ Modifier / 🗑️ Supprimer"] * len(df)
 
-if not df.empty and "ID" in df.columns:
-    selected_id = st.selectbox("Sélectionner un contact à modifier ou supprimer", df["ID"])
-    selected_row = df[df["ID"] == selected_id].iloc[0]
+    gb = GridOptionsBuilder.from_dataframe(df_actions)
+    gb.configure_column("Actions", editable=False)
+    gb.configure_selection("single", use_checkbox=True)
+    grid_options = gb.build()
 
-    st.markdown("### ✏️ Modifier le contact")
-    with st.form("modifier_contact"):
-        col1, col2 = st.columns(2)
-        with col1:
-            immeuble = st.text_input("Immeuble", value=selected_row["Immeuble"])
-            adresse = st.text_input("Adresse", value=selected_row["Adresse"])
-            etage = st.text_input("Étage", value=selected_row["Étage"])
-            nom = st.text_input("Nom affiché", value=selected_row["Nom affiché"])
-            type_bien = st.selectbox("Type de bien", ["T1", "T2", "T3", "Maison", "Inconnu"], index=["T1", "T2", "T3", "Maison", "Inconnu"].index(selected_row["Type de bien"]))
-        with col2:
-            contacte = st.radio("Contacté ?", ["Oui", "Non"], index=["Oui", "Non"].index(selected_row["Contacté ?"]))
-            interet = st.selectbox("Intérêt", ["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"], index=["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"].index(selected_row["Intérêt"]))
-            action = st.text_input("Action à suivre", value=selected_row["Action"])
-            relance = st.date_input("Date de relance", value=pd.to_datetime(selected_row["Relance"]) if selected_row["Relance"] else None)
-            commentaire = st.text_area("Commentaire", value=selected_row["Commentaire"])
+    st.markdown("### 📋 Tableau de prospection")
+    grid_response = AgGrid(
+        df_actions,
+        gridOptions=grid_options,
+        update_mode=GridUpdateMode.SELECTION_CHANGED,
+        height=400,
+        fit_columns_on_grid_load=True
+    )
 
-        modif = st.form_submit_button("💾 Enregistrer les modifications")
-        if modif:
-            df.loc[df["ID"] == selected_id, :] = {
-                "Date": selected_row["Date"],
-                "Immeuble": immeuble,
-                "Adresse": adresse,
-                "Étage": etage,
-                "Nom affiché": nom,
-                "Type de bien": type_bien,
-                "Contacté ?": contacte,
-                "Intérêt": interet,
-                "Action": action,
-                "Relance": relance.strftime("%Y-%m-%d") if relance else "",
-                "Commentaire": commentaire,
-                "ID": selected_id
-            }
-            df.to_csv("prospection.csv", index=False)
-            st.success("✅ Modifications enregistrées.")
+    selected = grid_response["selected_rows"]
+    if selected:
+        selected_id = selected[0]["ID"]
+        selected_row = df[df["ID"] == selected_id].iloc[0]
 
-    if st.button("🗑️ Supprimer ce contact"):
-        df = df[df["ID"] != selected_id]
-        df.to_csv("prospection.csv", index=False)
-        st.success("❌ Contact supprimé.")
+        st.markdown("### ✏️ Modifier ou supprimer le contact sélectionné")
+        with st.form("modifier_contact"):
+            col1, col2 = st.columns(2)
+            with col1:
+                immeuble = st.text_input("Immeuble", value=selected_row["Immeuble"])
+                adresse = st.text_input("Adresse", value=selected_row["Adresse"])
+                etage = st.text_input("Étage", value=selected_row["Étage"])
+                nom = st.text_input("Nom affiché", value=selected_row["Nom affiché"])
+                type_bien = st.selectbox("Type de bien", ["T1", "T2", "T3", "Maison", "Inconnu"], index=["T1", "T2", "T3", "Maison", "Inconnu"].index(selected_row["Type de bien"]))
+            with col2:
+                contacte = st.radio("Contacté ?", ["Oui", "Non"], index=["Oui", "Non"].index(selected_row["Contacté ?"]))
+                interet = st.selectbox("Intérêt", ["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"], index=["Vente envisagée", "Location", "Non", "Peut-être", "Inconnu"].index(selected_row["Intérêt"]))
+                action = st.text_input("Action à suivre", value=selected_row["Action"])
+                relance = st.date_input("Date de relance", value=pd.to_datetime(selected_row["Relance"]) if selected_row["Relance"] else None)
+                commentaire = st.text_area("Commentaire", value=selected_row["Commentaire"])
+
+            col_modif, col_suppr = st.columns(2)
+            with col_modif:
+                modif = st.form_submit_button("💾 Enregistrer les modifications")
+            with col_suppr:
+                suppr = st.form_submit_button("🗑️ Supprimer ce contact")
+
+            if modif:
+                df.loc[df["ID"] == selected_id, :] = {
+                    "Date": selected_row["Date"],
+                    "Immeuble": immeuble,
+                    "Adresse": adresse,
+                    "Étage": etage,
+                    "Nom affiché": nom,
+                    "Type de bien": type_bien,
+                    "Contacté ?": contacte,
+                    "Intérêt": interet,
+                    "Action": action,
+                    "Relance": relance.strftime("%Y-%m-%d") if relance else "",
+                    "Commentaire": commentaire,
+                    "ID": selected_id
+                }
+                df.to_csv("prospection.csv", index=False)
+                st.success("✅ Modifications enregistrées.")
+                st.experimental_rerun()
+
+            if suppr:
+                df = df[df["ID"] != selected_id]
+                df.to_csv("prospection.csv", index=False)
+                st.success("❌ Contact supprimé.")
+                st.experimental_rerun()
 
 # 🔔 Relances à venir
 st.subheader("Relances à venir")
@@ -173,7 +200,6 @@ else:
 
     st.success(f"{len(df_filtré)} mutations filtrées")
 
-    # ✅ Sécurisation des colonnes pour le style
     colonnes_droite = [col for col in [
         "Valeur foncière (€)", "Surface bâtie (m²)", "Lot Carrez (m²)",
         "Pièces", "Nombre de lots"
@@ -183,7 +209,6 @@ else:
         "Date mutation", "Nature mutation", "Code postal"
     ] if col in df_filtré.columns]
 
-    # ✅ Affichage du tableau filtré
     if not df_filtré.empty:
         styler = df_filtré.style \
             .set_properties(**{"text-align": "right"}, subset=colonnes_droite) \
