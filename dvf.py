@@ -9,7 +9,6 @@ BASE_CADASTRE = "https://cadastre.data.gouv.fr/bundler/cadastre-etalab/communes"
 def get_communes_du_departement(code_departement="69"):
     try:
         url = f"https://geo.api.gouv.fr/departements/{code_departement}/communes?fields=nom,code"
-        print(f"📡 get_communes_du_departement → {url}")
         r1 = requests.get(url, timeout=5)
         communes = r1.json() if r1.status_code == 200 else []
 
@@ -26,62 +25,48 @@ def get_communes_du_departement(code_departement="69"):
                 })
 
         return sorted(communes, key=lambda c: c["nom"])
-    except Exception as e:
-        print(f"❌ Erreur get_communes_du_departement: {e}")
+    except:
         return []
 
 @cache_data
 def get_sections(code_commune):
     url = f"{BASE_CADASTRE}/{code_commune}/geojson/sections"
-    print(f"📡 get_sections → {url}")
     try:
         r = requests.get(url, timeout=5)
-        print(f"📬 Statut : {r.status_code}")
         data = r.json() if r.status_code == 200 else {}
-        features = data.get("features", [])
-        print(f"✅ Sections récupérées : {len(features)}")
-        return features if isinstance(features, list) else []
-    except Exception as e:
-        print(f"❌ Erreur get_sections: {e}")
+        return data.get("features", []) if isinstance(data.get("features", []), list) else []
+    except:
         return []
 
 @cache_data
 def get_parcelles_geojson(code_commune):
     url = f"{BASE_CADASTRE}/{code_commune}/geojson/parcelles"
-    print(f"📡 get_parcelles_geojson → {url}")
     try:
         r = requests.get(url, timeout=5)
         data = r.json() if r.status_code == 200 else {}
-        features = data.get("features", [])
-        print(f"✅ Parcelles récupérées : {len(features)}")
-        return features if isinstance(features, list) else []
-    except Exception as e:
-        print(f"❌ Erreur get_parcelles_geojson: {e}")
+        return data.get("features", []) if isinstance(data.get("features", []), list) else []
+    except:
         return []
 
 @cache_data
 def get_mutations_by_id_parcelle(id_parcelle):
     url = f"{BASE_DVF}/api/parcelles2/{id_parcelle}/from=2020-01-01&to=2025-12-31"
-    print(f"📡 get_mutations_by_id_parcelle → {url}")
     try:
         r = requests.get(url, timeout=5)
-        mutations = r.json().get("mutations", []) if r.status_code == 200 else []
-        print(f"✅ Mutations récupérées : {len(mutations)}")
-        return mutations
-    except Exception as e:
-        print(f"❌ Erreur get_mutations_by_id_parcelle: {e}")
+        return r.json().get("mutations", []) if r.status_code == 200 else []
+    except:
         return []
 
 def safe_float(value):
     try:
         return float(value)
-    except (TypeError, ValueError):
+    except:
         return 0.0
 
 def safe_int(value):
     try:
         return int(value)
-    except (TypeError, ValueError):
+    except:
         return 0
 
 def normaliser_mutations(mutations):
@@ -114,14 +99,11 @@ def normaliser_mutations(mutations):
                 "Section": info.get("section_prefixe"),
                 "Parcelle": info.get("id_parcelle")
             })
-    df = pd.DataFrame(lignes)
     colonnes = [
         "Date mutation", "Nature mutation", "Valeur foncière (€)",
         "Type local", "Surface bâtie (m²)", "Lot Carrez (m²)", "Pièces",
         "Nombre de lots", "Adresse", "Code postal", "Commune",
         "Section", "Parcelle"
     ]
-    df = df[colonnes]
-    df = df.sort_values("Date mutation", ascending=False)
-    print(f"📊 normaliser_mutations → {df.shape[0]} lignes")
-    return df
+    df = pd.DataFrame(lignes)[colonnes]
+    return df.sort_values("Date mutation", ascending=False)
